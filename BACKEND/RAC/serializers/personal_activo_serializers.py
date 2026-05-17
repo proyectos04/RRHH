@@ -7,13 +7,19 @@ from django.db import transaction
 from ..models.personal_models import *
 from ..models.historial_personal_models import Tipo_movimiento
 #importacion de servicios
-from ..services.generacion_codigo import generador_codigos 
+from ..services.generacion_codigo import generador_codigos, generar_prefijo_nomina 
 from ..serializers.catalogs_serializers import *
-from ..services.constants import *
+from ..utils.constants import * 
 
 from USER.models.user_models import cuenta as User
 
 from ..services.constants_historial import registrar_historial_movimiento
+from ..services.profile_services import (
+    upsert_vivienda, upsert_health_profile, upsert_physical_profile,
+    upsert_academic_profile, replace_complementaria,
+    replace_contacto_emergencia, replace_antecedentes,
+)
+from ..services.dependency_validators import validate_dependency_hierarchy
 
 
         
@@ -93,41 +99,13 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
         }
 
     def _handle_nested_data(self, instance, nested):
-        if nested['vivienda']:
-            datos_vivienda.objects.update_or_create(empleado_id=instance, defaults=nested['vivienda'])
-        
-        if nested['salud']:
-            salud_dict = nested['salud']
-            patologias = salud_dict.pop('patologiaCronica', None)
-            discapacidades = salud_dict.pop('discapacidad', None)
-            Alergias = salud_dict.pop('alergias', None)
-
-            s_obj, _ = perfil_salud.objects.update_or_create(empleado_id=instance, defaults=salud_dict)
-            if patologias is not None: s_obj.patologiaCronica.set(patologias)
-            if discapacidades is not None: s_obj.discapacidad.set(discapacidades)
-            if Alergias is not None: s_obj.alergias.set(Alergias)
-
-
-        if nested['fisico']:
-            perfil_fisico.objects.update_or_create(empleado_id=instance, defaults=nested['fisico'])
-
-        if nested['academico']:
-            formacion_academica.objects.update_or_create(empleado_id=instance, defaults=nested['academico'])
-            
-        if nested['complementaria'] is not None:
-            instance.formacion_complementaria_set.all().delete()
-            for formacion in nested['complementaria']:
-                formacion_complementaria.objects.create(empleado_id=instance, **formacion)
-
-        if nested['contacto_emergencia'] is not None:
-            contacto_emergencia.objects.filter(empleado_id=instance).delete() 
-            for contacto in nested['contacto_emergencia']:
-                contacto_emergencia.objects.create(empleado_id=instance, **contacto)
-
-        if nested['antecedentes'] is not None:
-            instance.antecedentes_servicio_set.all().delete()
-            for ant in nested['antecedentes']:
-                antecedentes_servicio.objects.create(empleado_id=instance, **ant)
+        upsert_vivienda(instance, nested.get('vivienda'))
+        upsert_health_profile(instance, nested.get('salud'), 'empleado_id')
+        upsert_physical_profile(instance, nested.get('fisico'), 'empleado_id')
+        upsert_academic_profile(instance, nested.get('academico'), 'empleado_id')
+        replace_complementaria(instance, nested.get('complementaria'))
+        replace_contacto_emergencia(instance, nested.get('contacto_emergencia'))
+        replace_antecedentes(instance, nested.get('antecedentes'))
                           
 # -------------------------------------------------------------
 # serializers para listar datos personales 
@@ -240,25 +218,15 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
                      f"Ya existe el código {codigo} para este tipo de nómina"
                 )
         
-        dep = attrs.get('Dependencia', getattr(self.instance, 'Dependencia', None))
-        dg = attrs.get('DireccionGeneral', getattr(self.instance, 'DireccionGeneral', None))
-        dl = attrs.get('DireccionLinea', getattr(self.instance, 'DireccionLinea', None))
-        coor = attrs.get('Coordinacion', getattr(self.instance, 'Coordinacion', None))
-
-        if dg and dep:
-            if dg.dependenciaId_id != dep.id:
-                raise serializers.ValidationError("La Dirección General seleccionada no pertenece a la Dependencia indicada")
-            
-        if dl and dg and dl.direccionGeneral_id != dg.id:
-            raise serializers.ValidationError("La Direccion de Linea seleccionada no pertenece a la Direccion General indicada")
-
-        if coor:
-            if not dl:
-                raise serializers.ValidationError("Debe seleccionar una Dirección de Linea para asignar esta Coordinación")
-            
-            parent_dl_id = getattr(coor, 'direccionLinea_id', None)
-            if parent_dl_id and parent_dl_id != dl.id:
-                raise serializers.ValidationError("La coordinación no pertenece a la Dirección de Línea seleccionada")
+        try:
+            validate_dependency_hierarchy(
+                dependencia=attrs.get('Dependencia', getattr(self.instance, 'Dependencia', None)),
+                direccion_general=attrs.get('DireccionGeneral', getattr(self.instance, 'DireccionGeneral', None)),
+                direccion_linea=attrs.get('DireccionLinea', getattr(self.instance, 'DireccionLinea', None)),
+                coordinacion=attrs.get('Coordinacion', getattr(self.instance, 'Coordinacion', None)),
+            )
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
 
         if self.instance and self.instance.tiponominaid and self.instance.tiponominaid.requiere_codig:
             
@@ -423,15 +391,10 @@ class SpecialPositionAutoCreateSerializer(CleanZerosMixin, serializers.ModelSeri
             raise serializers.ValidationError(f"Error de configuración: {str(e)}")
 
         tipo_nomina = attrs.get('tiponominaid')
-        nombre_nomina = tipo_nomina.nomina.upper()
-
-        stop_words = {'DE', 'LA', 'EL', 'Y', 'LOS', 'LAS', 'EN', 'PARA'}
-        palabras = [w for w in nombre_nomina.split() if w not in stop_words]
-        
-        if not palabras:
-            raise serializers.ValidationError("No se pudo generar un prefijo desde el nombre de la nómina.")
-
-        prefix = "".join([w[0] for w in palabras]) + "_"
+        try:
+            prefix = generar_prefijo_nomina(tipo_nomina)
+        except ValueError as e:
+            raise serializers.ValidationError(str(e))
         attrs['codigo_generado'] = generador_codigos(prefix)
 
         return attrs 

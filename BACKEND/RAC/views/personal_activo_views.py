@@ -17,7 +17,7 @@ from ..models.personal_models import *
 from ..models.ubicacion_models import *
 
 from RAC.filters.filters_personal import EmployeeFilter, AsigTrabajoFilter
-from ..services.constants import *
+from ..utils.constants import *
 
 from USER.models.user_models import cuenta as User  
 

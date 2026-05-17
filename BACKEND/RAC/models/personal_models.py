@@ -450,32 +450,3 @@ class AsigTrabajo(models.Model):
         
     
     
-class Cargos_DireccionGeneral(models.Model):
-    
-    Cargo =  models.ForeignKey('Denominacioncargo', models.DO_NOTHING, db_column='cargoId')
-    Direccion_general = models.ForeignKey(DireccionGeneral, models.DO_NOTHING, db_column='direccionGeneralId')
-    Cantidad_disponible = models.PositiveIntegerField()
-  
-    class Meta:
-        managed = True
-        app_label = 'RAC'
-    
-class Cargos_DireccionLinea(models.Model):
-    
-    Cargo =  models.ForeignKey('Denominacioncargo', models.DO_NOTHING, db_column='cargoId')
-    Direccion_linea = models.ForeignKey(DireccionLinea, models.DO_NOTHING, db_column='direccionLineaId')
-    Cantidad_disponible = models.PositiveIntegerField()
-
-    class Meta:
-        managed = True
-        app_label = 'RAC'
-    
-class Cargos_Coordinacion(models.Model):
-    
-    Cargo =  models.ForeignKey('Denominacioncargo', models.DO_NOTHING, db_column='cargoId')
-    Coordinacion = models.ForeignKey(Coordinaciones, models.DO_NOTHING, db_column='CoordniacionId')
-    Cantidad_disponible = models.PositiveIntegerField()
-
-    class Meta:
-        managed = True
-        app_label = 'RAC'

@@ -183,5 +183,5 @@ def get_report_types_config():
     return {"conteo", "lista"}
 
 def get_available_report_categories():
- 
+  
     return list(MAPA_REPORTES.keys())

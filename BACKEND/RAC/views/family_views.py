@@ -4,7 +4,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 from django.db import transaction
 from rest_framework.response import Response
-from RAC.services.constants import *
+from RAC.utils.constants import *
 from ..models.family_personal_models import Employeefamily, Parentesco, FamilyDocument
 from RAC.models.personal_models import Employee
 from ..serializers.family_serializers import FamilyCreateSerializer,FamilyListSerializer,ParentescoSerializer,FamilyDocumentSerializer,FamilyDocumentReadSerializer

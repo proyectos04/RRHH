@@ -7,8 +7,8 @@ from django.apps import apps
 from django.db.models import  Prefetch
 
 from RAC.serializers.report_serializers import *
-from RAC.services.mapa_reporte import *
-from RAC.services.constants import *
+from RAC.utils.mapa_reporte import *
+from RAC.utils.constants import *
 from  RAC.services.pdf.generators.employee_passive_pdf import EmployeePassivePDFGenerator
 from RAC.services.pdf.generators.family_pdf import FamilyPDFGenerator
 from RAC.services.pdf.generators.assignment_pdf import AssignmentPDFGenerator

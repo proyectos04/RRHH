@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from RAC.services.mapa_reporte import MAPA_REPORTES
+from RAC.utils.mapa_reporte import MAPA_REPORTES
 
 
 

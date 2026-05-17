@@ -6,6 +6,5 @@ from .personal_models import (Denominacioncargo,Denominacioncargoespecifico, Org
                               Discapacidades, estado_civil, Talla_Camisas, Talla_Pantalones,
                               Talla_Zapatos, GrupoSanguineo, carreras, Menciones,
                               datos_vivienda, condicion_vivienda, perfil_salud, perfil_fisico, 
-                              formacion_academica, antecedentes_servicio, Employee, AsigTrabajo, Cargos_DireccionGeneral,
-                              Cargos_DireccionLinea, Cargos_Coordinacion)
+                              formacion_academica, antecedentes_servicio, Employee, AsigTrabajo)
 from .ubicacion_models import Region, Estado, Municipio, Parroquia

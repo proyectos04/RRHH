@@ -9,7 +9,7 @@ from django.db.models import Prefetch
 from ..models.personal_models import *
 
 from RAC.filters.filters_personal import EmployeeFilter, AsigTrabajoFilter
-from ..services.constants import *
+from ..utils.constants import *
 
 from drf_spectacular.utils import extend_schema
 
