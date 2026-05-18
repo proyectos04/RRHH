@@ -36,3 +36,5 @@ celery==5.3.4
 reportlab==4.4.9
 django-filter==25.1
 Pillow==12.1.0
+qrcode==8.2
+pdf2image==1.17.0

@@ -32,6 +32,14 @@ const departments: Department[] = [
     color: "bg-green-500",
     alt: "Human Resources Department",
   },
+  {
+    id: "Carnetizacion",
+    name: "Carnetización",
+    imageSrc: "/images/departments/datos.jpg",
+    href: "/dashboard/carnetizacion",
+    color: "bg-blue-500",
+    alt: "Sistema de Carnetización",
+  },
 ];
 
 export default function Dashboard() {

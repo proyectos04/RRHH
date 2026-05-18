@@ -47,7 +47,7 @@ INSTALLED_APPS = [
     'django_filters',
     'RAC',
     'USER',
-
+    'CARNETIZACION',
 ]
 
 MIDDLEWARE = [
@@ -85,7 +85,9 @@ CORS_ALLOWED_ORIGINS = [
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'CARNETIZACION' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -149,8 +151,18 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [
+    BASE_DIR / 'CARNETIZACION' / 'static',
+]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Configuración del sistema de carnetización
+CARNET_VALIDATOR_URL = os.getenv('CARNET_VALIDATOR_URL', 'https://midominio.com/validar')
+CARNET_COMPANY_NAME = os.getenv('CARNET_COMPANY_NAME', 'CONATEL')
+NESTJS_URL = os.getenv('NESTJS_URL', 'http://localhost:5000/')
+POPPLER_PATH = os.getenv('POPPLER_PATH', r'C:\poppler\poppler-25.12.0\Library\bin')
 
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
