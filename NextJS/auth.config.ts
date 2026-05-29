@@ -49,7 +49,7 @@ export default {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                cedula: data.identification,
+                correo: data.email,
                 password: data.password,
               }),
             },
@@ -57,7 +57,10 @@ export default {
           if (!response.ok) {
             throw new Error("Invalid credentials.");
           }
-          const userData: ApiResponse<SessionType> = await response.json();
+          const rawData = await response.json();
+          const userData = rawData as ApiResponse<SessionType> & {
+            tokens: { access: string; refresh: string };
+          };
           return {
             id: userData.data.id,
             name: userData.data.nombres + " " + userData.data.apellidos,
@@ -70,6 +73,8 @@ export default {
             direccionLine: userData.data.direccion_linea,
             coordination: userData.data.coordinacion,
             dependency: userData.data.dependencia,
+            djAccess: userData.tokens.access,
+            djRefresh: userData.tokens.refresh,
           };
         } catch {
           throw new Error("Authentication failed");

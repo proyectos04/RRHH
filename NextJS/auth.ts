@@ -22,6 +22,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.direccionLine = user.direccionLine;
         token.coordination = user.coordination;
         token.dependency = user.dependency;
+
+        token.djAccess = (user as any).djAccess;
+        token.djRefresh = (user as any).djRefresh;
       }
       return token;
     },
