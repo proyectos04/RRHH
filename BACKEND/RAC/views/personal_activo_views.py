@@ -18,6 +18,13 @@ from ..models.ubicacion_models import *
 
 from RAC.filters.filters_personal import EmployeeFilter, AsigTrabajoFilter
 from ..utils.constants import *
+from ..utils.data_formatters import extract_first_error
+from ..services.profile_services import upsert_contrato
+from ..models.historial_personal_models import PrestamoCargo, categoria_movimiento, Tipo_movimiento
+from ..serializers.historial_personal_serializers import (
+    PrestamoCargoSerializer, PrestamoCargoCreateSerializer, PrestamoCargoUpdateSerializer, TipoMovimientoSerializer
+)
+from ..services.prestamo_cargo_services import verificar_estatus_prestamo, validar_encargaduria_unica, validar_encargado_unico
 
 from USER.models.user_models import cuenta as User  
 
@@ -257,13 +264,9 @@ class ImportEmployeesView(APIView):
 
                     # Parsear fechas (acepta dd/mm/yyyy y limpia comillas tipográficas)
                     fecha_nac = parse_date(row.get('fecha_nacimiento'))
-                    fecha_ingreso = parse_date(row.get('fechaingresoorganismo'))
 
                     if row.get('fecha_nacimiento') and fecha_nac is None:
                         errors.append(f"Fila {index}: fecha_nacimiento '{row.get('fecha_nacimiento')}' no válido.")
-
-                    if row.get('fechaingresoorganismo') and fecha_ingreso is None:
-                        errors.append(f"Fila {index}: fechaingresoorganismo '{row.get('fechaingresoorganismo')}' no válido.")
 
                     # Crear instancia del modelo (sin guardar en DB aún para optimizar)
                     employee = Employee(
@@ -271,7 +274,6 @@ class ImportEmployeesView(APIView):
                         nombres=row.get('NOMBRES'),
                         apellidos=row.get('APELLIDOS'),
                         fecha_nacimiento=fecha_nac,
-                        fechaingresoorganismo=fecha_ingreso,
                         sexoid_id=sexo_id, 
                         estadoCivil_id=1
                     )
@@ -319,9 +321,9 @@ class ImportFullEmployeeDataView(APIView):
                 'sexo': {normalize(obj.sexo): obj for obj in Sexo.objects.all()},
                 'estado_civil': {normalize(obj.estadoCivil): obj for obj in estado_civil.objects.all()},
                 'sangre': {normalize(obj.GrupoSanguineo): obj for obj in GrupoSanguineo.objects.all()},
-                'talla_c': {normalize(obj.talla): obj for obj in Talla_Camisas.objects.all()},
-                'talla_p': {normalize(obj.talla): obj for obj in Talla_Pantalones.objects.all()},
-                'talla_z': {normalize(obj.talla): obj for obj in Talla_Zapatos.objects.all()},
+                'talla_c': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Camisa').select_related('tipo_prenda', 'region')},
+                'talla_p': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Pantalón').select_related('tipo_prenda', 'region')},
+                'talla_z': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Zapato').select_related('tipo_prenda', 'region')},
                 
                 # Académicos
                 'niveles': {normalize(obj.nivelacademico): obj for obj in NivelAcademico.objects.all()},
@@ -341,6 +343,10 @@ class ImportFullEmployeeDataView(APIView):
                 'alergias': {normalize(obj.alergia): obj for obj in Alergias.objects.all()},
                 'patologias': {normalize(obj.patologia): obj for obj in patologias_Cronicas.objects.all()},
                 'discapacidades': {normalize(obj.discapacidad): obj for obj in Discapacidades.objects.all()},
+
+                # Organismos y Políticas
+                'organismos': {normalize(obj.Organismoadscrito): obj for obj in OrganismoAdscrito.objects.all()},
+                'politicas': {normalize(obj.tipo_politica): obj for obj in politicas.objects.all()},
             }
 
             errores = []
@@ -374,15 +380,18 @@ class ImportFullEmployeeDataView(APIView):
                                 'nombres': normalize(row.get('nombres')),
                                 'apellidos': normalize(row.get('apellidos')),
                                 'fecha_nacimiento': parse_date('fecha_nacimiento'),
-                                'fechaingresoorganismo': parse_date('fecha_ingreso_organismo'),
                                 'correo': str(row.get('correo', '')).lower() if not pd.isna(row.get('correo')) else None,
                                 'telefono_movil': str(row.get('telefono_movil', '')),
                                 'telefono_habitacion': str(row.get('telefono_habitacion', '')),
                                 'profile': str(row.get('perfil_profesional', '')) if not pd.isna(row.get('perfil_profesional')) else None,
                                 'sexoid': get_obj('sexo', 'sexo'),
                                 'estadoCivil': get_obj('estado_civil', 'estado_civil'),
-                                'n_contrato': str(row.get('n_contrato', '')) if not pd.isna(row.get('n_contrato')) else None,
                             }
+
+                            n_contrato_excel = str(row.get('n_contrato', '')) if not pd.isna(row.get('n_contrato')) else None
+                            fecha_ingreso_org = parse_date('fecha_ingreso_organismo')
+                            fecha_culminacion_excel = parse_date('fecha_culminacion') if 'fecha_culminacion' in row else None
+                            politica_excel = normalize(row.get('politica')) if 'politica' in row else None
 
                             emp_instance, created = Employee.objects.update_or_create(
                                 cedulaidentidad=cedula,
@@ -464,14 +473,25 @@ class ImportFullEmployeeDataView(APIView):
 
                             # --- 7. ANTECEDENTES DE SERVICIO ---
                             if normalize(row.get('ant_institucion')):
+                                organismo_obj = cache['organismos'].get(normalize(row.get('ant_institucion')))
                                 antecedentes_servicio.objects.update_or_create(
                                     empleado_id=emp_instance,
-                                    institucion=normalize(row.get('ant_institucion')),
+                                    organismo_id=organismo_obj,
                                     defaults={
                                         'fecha_ingreso': parse_date('ant_fecha_ingreso'),
                                         'fecha_egreso': parse_date('ant_fecha_egreso')
                                     }
                                 )
+
+                            # --- 8. CONTRATO (CONATEL) ---
+                            if n_contrato_excel and fecha_ingreso_org:
+                                politica_obj = cache['politicas'].get(politica_excel)
+                                upsert_contrato(emp_instance, {
+                                    'n_contrato': n_contrato_excel,
+                                    'fecha_ingreso': fecha_ingreso_org,
+                                    'politica_id': politica_obj,
+                                    'fecha_culminacion': fecha_culminacion_excel,
+                                })
 
                         except Exception as e:
                             errores.append(f"Línea {linea}: {str(e)}")
@@ -522,9 +542,9 @@ class ImportFullFamilyDataView(APIView):
                 'sexo': {normalize(obj.sexo): obj for obj in Sexo.objects.all()},
                 'estado_civil': {normalize(obj.estadoCivil): obj for obj in estado_civil.objects.all()},
                 'sangre': {normalize(obj.GrupoSanguineo): obj for obj in GrupoSanguineo.objects.all()},
-                'talla_c': {normalize(obj.talla): obj for obj in Talla_Camisas.objects.all()},
-                'talla_p': {normalize(obj.talla): obj for obj in Talla_Pantalones.objects.all()},
-                'talla_z': {normalize(obj.talla): obj for obj in Talla_Zapatos.objects.all()},
+                'talla_c': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Camisa').select_related('tipo_prenda', 'region')},
+                'talla_p': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Pantalón').select_related('tipo_prenda', 'region')},
+                'talla_z': {normalize(obj.valor): obj for obj in Talla.objects.filter(tipo_prenda__categoria__iexact='Zapato').select_related('tipo_prenda', 'region')},
                 
                 # Académicos
                 'niveles': {normalize(obj.nivelacademico): obj for obj in NivelAcademico.objects.all()},
@@ -744,17 +764,13 @@ def create_employee(request):
             return Response({
                 'status': "Error",
                 'message': str(e),
-                
+                'errors': str(e),
             }, status=status.HTTP_400_BAD_REQUEST)
     else:
-        error_dict = serializer.errors 
-        first_error_field = list(error_dict.values())[0] 
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
-
         return Response({
             'status': "Error",
-            'message': clean_message, 
-      
+            'message': extract_first_error(serializer.errors),
+            'errors': serializer.errors,
         }, status=status.HTTP_400_BAD_REQUEST)
 
 #  ACTUALIZACION DE DATOS PERSONALES DEL EMPLEADO       
@@ -780,9 +796,7 @@ def update_employee(request, id):
         }, status=status.HTTP_200_OK)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
         
         return Response({
             'status': "Error",
@@ -884,9 +898,7 @@ def create_position(request):
         }, status=status.HTTP_201_CREATED)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_value = list(error_dict.values())[0]
-        clean_message = first_error_value[0] if isinstance(first_error_value, list) else first_error_value
+        clean_message = extract_first_error(serializer.errors)
         return Response({
             'status': "error",
             'message': clean_message, 
@@ -923,9 +935,7 @@ def update_position(request, id):
         }, status=status.HTTP_200_OK)
 
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -962,9 +972,7 @@ def assign_employee(request, id):
         }, status=status.HTTP_200_OK)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -999,9 +1007,7 @@ def assign_employee_special(request):
         }, status=status.HTTP_201_CREATED)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -1036,9 +1042,7 @@ def create_subsidiary_organism(request):
         }, status=status.HTTP_201_CREATED)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -1105,9 +1109,7 @@ def create_dependencia(request):
                 'message': str(e),
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
     return Response({
         'status': "error",
         'message': clean_message, 
@@ -1167,9 +1169,7 @@ def create_general_directorate(request):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
     
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
     return Response({
         'status': "error",
         'message': clean_message, 
@@ -1204,9 +1204,39 @@ def create_Institucion(request):
                 'data': None
             }, status=status.HTTP_400_BAD_REQUEST)
     
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
+    return Response({
+        'status': "error",
+        'message': clean_message, 
+        'data': None
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+@extend_schema(
+    tags=["Recursos Humanos"],
+    summary="Crear capacitacion",
+    description="Permite crear una nueva capacitacion",
+    request=CapacitacionSerializer,
+)
+@api_view(['POST'])
+def create_Capacitacion(request):
+    serializer = CapacitacionSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        try:
+            serializer.save()
+            return Response({
+                'status': "success",
+                "message": "Capacitación registrada correctamente",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': str(e),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    clean_message = extract_first_error(serializer.errors)
     return Response({
         'status': "error",
         'message': clean_message, 
@@ -1265,9 +1295,7 @@ def create_line_directorate(request):
         }, status=status.HTTP_201_CREATED)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -1328,9 +1356,7 @@ def create_coordination(request):
         }, status=status.HTTP_201_CREATED)
         
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -1438,15 +1464,14 @@ def get_employee_by_id(request, cedulaidentidad):
 
         empleado = Employee.objects.filter(
             cedulaidentidad=cedulaidentidad,
-            assignments__Tipo_personal__tipo_personal__iexact=PERSONAL_ACTIVO
         ).prefetch_related(
             Prefetch('assignments', queryset=filtro_asignaciones)
-        ).distinct().first()
+        ).first()
 
         if not empleado:
             return Response({
                 'status': "error",
-                'message': "No se encontró el empleado o no posee cargos activos.",
+                'message': "No se encontró el empleado.",
                 'data': []
             }, status=status.HTTP_404_NOT_FOUND)
 
@@ -1458,10 +1483,10 @@ def get_employee_by_id(request, cedulaidentidad):
             'data': serializer.data
         }, status=status.HTTP_200_OK)
 
-    except Exception:
+    except Exception as e:
         return Response({
             'status': "error",
-            'message': "Ocurrió un error al procesar la búsqueda del empleado.",
+            'message': f"Ocurrió un error al procesar la búsqueda del empleado. {str(e)}",
             'data': None
         }, status=status.HTTP_400_BAD_REQUEST)
         
@@ -1583,6 +1608,32 @@ def list_genders(request):
 
 @extend_schema(
     tags=["Recursos Humanos - Datos Personales"],
+    summary="Listar politicas",
+    description="Devuelve una lista de todos los tipos de politicas disponibles.",
+    responses=politicaSerializer
+)
+@api_view(['GET'])
+def list_politicas(request):
+    try:
+        queryset = politicas.objects.all()
+        serializer = politicaSerializer(queryset, many=True)
+        
+        return Response({
+            'status': "success",
+            'message': "Politicas listadas correctamente",
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except Exception as e:
+        return Response({
+            'status': "error",
+            'message': "No se pudieron recuperar los datos de politicas.",
+            'data': []
+        }, status=status.HTTP_400_BAD_REQUEST)
+        
+
+@extend_schema(
+    tags=["Recursos Humanos - Datos Personales"],
     summary="Listar Estado civil",
     description="Devuelve una lista de todos los Estado civil disponibles.",
     responses=EstadoCivilSerializer
@@ -1642,9 +1693,12 @@ def list_academic_levels(request):
     responses=CarrerasSerializer
 )
 @api_view(['GET'])
-def list_careers(request):
+def list_careers(request, nivel_academico_id=None):
     try:
-        queryset = carreras.objects.all()
+        if nivel_academico_id:
+            queryset = carreras.objects.filter(nivel_academico_id=nivel_academico_id)
+        else:
+            queryset = carreras.objects.all()
         serializer = CarrerasSerializer(queryset, many=True)
         
         return Response({
@@ -1661,6 +1715,38 @@ def list_careers(request):
         }, status=status.HTTP_400_BAD_REQUEST)
         
         
+@extend_schema(
+    tags=["Recursos Humanos - Datos Academicos"],
+    summary="Crear una nueva carrera",
+    description="Permite registrar una nueva carrera.",
+    request=CarrerasSerializer,
+)
+@api_view(['POST'])
+def create_carrera(request):
+    serializer = CarrerasSerializer(data=request.data)
+    
+    if serializer.is_valid():
+        try:
+            serializer.save()
+            return Response({
+                'status': "success",
+                "message": "Carrera registrada correctamente",
+                "data": serializer.data
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': str(e),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+    
+    clean_message = extract_first_error(serializer.errors)
+    return Response({
+        'status': "error",
+        'message': clean_message,
+        'data': None
+    }, status=status.HTTP_400_BAD_REQUEST)
+
 
 @extend_schema(
     tags=["Recursos Humanos - Datos Academicos"],
@@ -1749,81 +1835,175 @@ def list_housing_conditions(request):
 # DATOS DE VESTIMENTA
 @extend_schema(
     tags=["Recursos Humanos - Datos Fisicos"],
-    summary="Listar Tallas de Camisas",
-    description="Devuelve una lista de todas las Tallas de Camisas disponibles.",
-    responses=TallaCamisaSerializer
+    summary="Listar Tallas unificadas",
+    description="Devuelve una lista de todas las tallas. Acepta ?tipo_prenda_id=X para filtrar.",
+    responses=TallaSerializer
 )
 @api_view(['GET'])
 def list_shirt_sizes(request):
-    try:
-        queryset = Talla_Camisas.objects.all()
-        serializer = TallaCamisaSerializer(queryset, many=True)
-        
-        return Response({
-            'status': "success",
-            'message': "Tallas de camisas listadas correctamente",
-            'data': serializer.data
-        }, status=status.HTTP_200_OK)
+    return list_tallas(request)
 
-    except Exception as e:
-        return Response({
-            'status': "error",
-            'message': "No se pudo recuperar la lista de tallas de camisas.",
-            'data': []
-        }, status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema(
     tags=["Recursos Humanos - Datos Fisicos"],
-    summary="Listar Tallas de Pantalones",
-    description="Devuelve una lista de todas las Tallas de Pantalones disponibles.",
-    responses=TallaPantalonSerializer
+    summary="Listar Tallas unificadas",
+    description="Devuelve una lista de todas las tallas. Acepta ?tipo_prenda_id=X para filtrar.",
+    responses=TallaSerializer
 )
 @api_view(['GET'])
 def list_pant_sizes(request):
-    try:
+    return list_tallas(request)
 
-        queryset = Talla_Pantalones.objects.all()
-        serializer = TallaPantalonSerializer(queryset, many=True)
-        
+
+@extend_schema(
+    tags=["Recursos Humanos - Datos Fisicos"],
+    summary="Listar Tallas unificadas",
+    description="Devuelve una lista de todas las tallas. Acepta ?tipo_prenda_id=X para filtrar.",
+    responses=TallaSerializer
+)
+@api_view(['GET'])
+def list_shoe_sizes(request):
+    return list_tallas(request)
+
+
+@extend_schema(
+    tags=["Recursos Humanos - Datos Fisicos"],
+    summary="Listar Tallas unificadas",
+    description="Devuelve una lista de todas las tallas. Acepta ?tipo_prenda_id=X para filtrar.",
+    responses=TallaSerializer
+)
+@extend_schema(
+    tags=["Recursos Humanos - Datos Fisicos"],
+    methods=['POST'],
+    summary="Crear talla",
+    description="Registra una nueva talla con valor, tipo_prenda y region.",
+    request=TallaCreateSerializer,
+)
+@api_view(['GET', 'POST'])
+def list_tallas(request):
+    if request.method == 'GET':
+        try:
+            queryset = Talla.objects.select_related('tipo_prenda', 'region').all()
+            tipo_prenda_id = request.GET.get('tipo_prenda_id')
+            if tipo_prenda_id:
+                queryset = queryset.filter(tipo_prenda_id=tipo_prenda_id)
+
+            serializer = TallaSerializer(queryset, many=True)
+
+            return Response({
+                'status': "success",
+                'message': "Tallas listadas correctamente",
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': "No se pudo recuperar la lista de tallas.",
+                'data': []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'POST':
+        serializer = TallaCreateSerializer(data=request.data)
+
+        if serializer.is_valid():
+            try:
+                serializer.save()
+                return Response({
+                    'status': "success",
+                    "message": "Talla creada correctamente",
+                    "data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({
+                    'status': "Error",
+                    'message': str(e),
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            clean_message = extract_first_error(serializer.errors)
+            return Response({
+                'status': "Error",
+                'message': clean_message,
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Recursos Humanos - Datos Fisicos"],
+    summary="Listar tipos de prenda",
+    description="Devuelve todos los tipos de prenda disponibles.",
+    responses=TipoPrendaSerializer
+)
+@api_view(['GET'])
+def list_tipo_prenda(request):
+    try:
+        queryset = TipoPrenda.objects.all()
+        serializer = TipoPrendaSerializer(queryset, many=True)
         return Response({
             'status': "success",
-            'message': "Tallas de pantalones listadas correctamente",
+            'message': "Tipos de prenda listados correctamente",
             'data': serializer.data
         }, status=status.HTTP_200_OK)
-
     except Exception as e:
         return Response({
             'status': "error",
-            'message': "No se pudo recuperar la lista de tallas de pantalones.",
+            'message': str(e),
             'data': []
         }, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(
     tags=["Recursos Humanos - Datos Fisicos"],
-    summary="Listar Tallas de Zapatos",
-    description="Devuelve una lista de todas las Tallas de Zapatos disponibles.",
-    responses=TallaZapatosSerializer
+    summary="Listar regiones de talla",
+    description="Devuelve todas las regiones de talla disponibles.",
+    responses=RegionTallaSerializer
 )
-@api_view(['GET'])
-def list_shoe_sizes(request):
-    try:
+@extend_schema(
+    tags=["Recursos Humanos - Datos Fisicos"],
+    methods=['POST'],
+    summary="Crear region de talla",
+    description="Registra una nueva region de talla con codigo y descripcion opcional.",
+    request=RegionTallaSerializer,
+)
+@api_view(['GET', 'POST'])
+def list_region_talla(request):
+    if request.method == 'GET':
+        try:
+            queryset = RegionTalla.objects.all()
+            serializer = RegionTallaSerializer(queryset, many=True)
+            return Response({
+                'status': "success",
+                'message': "Regiones de talla listadas correctamente",
+                'data': serializer.data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': str(e),
+                'data': []
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-        queryset = Talla_Zapatos.objects.all()
-        serializer = TallaZapatosSerializer(queryset, many=True)
-        
-        return Response({
-            'status': "success",
-            'message': "Tallas de calzado listadas correctamente",
-            'data': serializer.data
-        }, status=status.HTTP_200_OK)
+    if request.method == 'POST':
+        serializer = RegionTallaSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                serializer.save()
+                return Response({
+                    'status': "success",
+                    "message": "Region de talla creada correctamente",
+                    "data": serializer.data
+                }, status=status.HTTP_201_CREATED)
+            except Exception as e:
+                return Response({
+                    'status': "Error",
+                    'message': str(e),
+                }, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            clean_message = extract_first_error(serializer.errors)
+            return Response({
+                'status': "Error",
+                'message': clean_message,
+            }, status=status.HTTP_400_BAD_REQUEST)
 
-    except Exception as e:
-        return Response({
-            'status': "error",
-            'message': "No se pudo recuperar la lista de tallas de calzado.",
-            'data': []
-        }, status=status.HTTP_400_BAD_REQUEST)
 
 # DATOS DE SALUD  
 
@@ -1900,9 +2080,7 @@ def list_pathology_categories(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -1957,9 +2135,7 @@ def list_chronic_pathologies(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -2016,9 +2192,7 @@ def list_disability_categories(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -2076,9 +2250,7 @@ def list_disabilities(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -2136,9 +2308,7 @@ def list_allergies_categories(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -2194,9 +2364,7 @@ def list_allergies(request):
                     'message': str(e),
                 }, status=status.HTTP_400_BAD_REQUEST)
         else:
-            error_dict = serializer.errors 
-            first_error_field = list(error_dict.values())[0] 
-            clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+            clean_message = extract_first_error(serializer.errors)
 
             return Response({
                 'status': "Error",
@@ -2366,27 +2534,75 @@ def list_subsidiary_organisms(request):
      
 
 @extend_schema(
+    tags=["Recursos Humanos - Datos Laborales"],
+    summary="Listar Capacitaciones",
+    description="Devuelve una lista de capacitaciones disponibles",
+    responses=CapacitacionSerializer
+)
+@api_view(['GET'])
+def list_capacitaciones(request):
+    try:
+        queryset = Capacitaciones.objects.all()
+        serializer = CapacitacionSerializer(queryset, many=True)
+        return Response({
+            'status': "success",
+            'message': "Capacitaciones listadas correctamente",
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception:
+        return Response({
+            'status': "error",
+            'message': "No se pudo recuperar la lista de capacitaciones.",
+            'data': []
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Recursos Humanos - Datos Laborales"],
+    summary="Listar Grupos de Capacitación",
+    description="Devuelve una lista de grupos de capacitación disponibles",
+    responses=GrupoCapacitacionSerializer
+)
+@api_view(['GET'])
+def list_grupos_capacitacion(request):
+    try:
+        queryset = GruposCapacitacion.objects.all()
+        serializer = GrupoCapacitacionSerializer(queryset, many=True)
+        return Response({
+            'status': "success",
+            'message': "Grupos de capacitación listados correctamente",
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception:
+        return Response({
+            'status': "error",
+            'message': "No se pudo recuperar la lista de grupos de capacitación.",
+            'data': []
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
     tags=["Recursos Humanos - Organismo Adscrito"],
     summary="Listar Organismos Adscritos",
-    description="Devuelve una lista de todos los tipos de comision disponibles",
-    responses=TipoComisionSerializers
+    description="Devuelve una lista de todos los tipos de procedencia disponibles",
+    responses=TipoProcedenciaSerializers
 )       
 @api_view(['GET'])
 def list_types_comision(request):
     try:
-        queryset = TipoComision.objects.all()
-        serializer = TipoComisionSerializers(queryset, many=True)
+        queryset = TipoProcedencia.objects.all()
+        serializer = TipoProcedenciaSerializers(queryset, many=True)
         
         return Response({
             'status': "success",
-            'message': "tipos de comision listados correctamente",
+            'message': "tipos de procedencia listados correctamente",
             'data': serializer.data
         }, status=status.HTTP_200_OK)
 
     except Exception:
         return Response({
             'status': "error",
-            'message': "No se pudo recuperar la lista de tipos de comision.",
+            'message': "No se pudo recuperar la lista de tipos de procedencia.",
             'data': []
         }, status=status.HTTP_400_BAD_REQUEST)  
      
@@ -2727,3 +2943,187 @@ def crear_menciones_view(request):
         "mensaje": "No se pudieron crear las menciones.",
         "errores": serializer.errors
     }, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ============================================================
+# PRESTAMO DE CARGO (ENCARGADURIA)
+# ============================================================
+
+@extend_schema(
+    tags=["Prestamo de Cargo"],
+    summary="Crear prestamo de cargo",
+    description="Registra una nueva encargaduria sobre un cargo existente.",
+    request=PrestamoCargoCreateSerializer,
+)
+@api_view(['POST'])
+def create_prestamo_cargo(request):
+    serializer = PrestamoCargoCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        try:
+            cargo = serializer.validated_data['cargo_encargado']
+            empleado = serializer.validated_data['empleado_encargado']
+            validar_encargaduria_unica(cargo)
+            validar_encargado_unico(empleado)
+            serializer.validated_data['estatus'], _ = Estatus.objects.get_or_create(estatus__iexact="ACTIVO", defaults={"estatus": "ACTIVO"})
+            prestamo = serializer.save()
+            verificar_estatus_prestamo(prestamo)
+            return Response({
+                'status': "success",
+                'message': "Encargaduria registrada correctamente",
+                'data': PrestamoCargoSerializer(prestamo).data
+            }, status=status.HTTP_201_CREATED)
+        except ValidationError as e:
+            message = e.detail[0] if isinstance(e.detail, list) else str(e.detail)
+            return Response({
+                'status': "error",
+                'message': message,
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': str(e),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+    clean_message = extract_first_error(serializer.errors)
+    return Response({
+        'status': "error",
+        'message': clean_message,
+        'data': None
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Prestamo de Cargo"],
+    summary="Listar prestamos de cargo",
+    description="Devuelve una lista de prestamos de cargo con filtros opcionales.",
+)
+@api_view(['GET'])
+def list_prestamo_cargo(request):
+    try:
+        queryset = PrestamoCargo.objects.select_related(
+            'empleado_encargado', 'cargo_encargado', 'motivo', 'estatus', 'ejecutado_por'
+        ).all()
+
+        cargo_id = request.query_params.get('cargo_id')
+        empleado_cedula = request.query_params.get('empleado')
+        activo = request.query_params.get('activo')
+
+        if cargo_id:
+            queryset = queryset.filter(cargo_encargado_id=cargo_id)
+        if empleado_cedula:
+            queryset = queryset.filter(empleado_encargado__cedulaidentidad=empleado_cedula)
+        if activo == 'true':
+            from datetime import date
+            queryset = queryset.filter(fecha_fin__gte=date.today())
+
+        serializer = PrestamoCargoSerializer(queryset, many=True)
+        return Response({
+            'status': "success",
+            'message': "Prestamos listados correctamente",
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'status': "error",
+            'message': str(e),
+            'data': []
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Prestamo de Cargo"],
+    summary="Actualizar prestamo de cargo",
+    description="Actualiza la fecha de fin o el motivo de una encargaduria.",
+    request=PrestamoCargoUpdateSerializer,
+)
+@api_view(['PATCH'])
+def update_prestamo_cargo(request, id):
+    prestamo = get_object_or_404(PrestamoCargo, id=id)
+    serializer = PrestamoCargoUpdateSerializer(prestamo, data=request.data, partial=True)
+    if serializer.is_valid():
+        try:
+            prestamo = serializer.save()
+            if 'fecha_fin' in request.data:
+                prestamo.estatus, _ = Estatus.objects.get_or_create(estatus__iexact="FINALIZADA", defaults={"estatus": "FINALIZADA"})
+                prestamo.save()
+            else:
+                verificar_estatus_prestamo(prestamo)
+            return Response({
+                'status': "success",
+                'message': "Encargaduria actualizada correctamente",
+                'data': PrestamoCargoSerializer(prestamo).data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({
+                'status': "error",
+                'message': str(e),
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+    clean_message = extract_first_error(serializer.errors)
+    return Response({
+        'status': "error",
+        'message': clean_message,
+        'data': None
+    }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Prestamo de Cargo"],
+    summary="Listar motivos de encargaduria",
+    description="Devuelve los motivos de la categoria ENCARGADURIA.",
+)
+@api_view(['GET'])
+def list_motivos_encargaduria(request):
+    try:
+        motivos = Tipo_movimiento.objects.filter(
+            categoriaId__categoria='ENCARGADURIA'
+        )
+        serializer = TipoMovimientoSerializer(motivos, many=True)
+        return Response({
+            'status': "success",
+            'message': "Motivos listados correctamente",
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({
+            'status': "error",
+            'message': str(e),
+            'data': []
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(
+    tags=["Prestamo de Cargo"],
+    summary="Crear motivo de encargaduria",
+    description="Crea un nuevo motivo en la categoria ENCARGADURIA.",
+)
+@api_view(['POST'])
+def create_motivo_encargaduria(request):
+    nombre = request.data.get('movimiento', '').strip().upper()
+    if not nombre:
+        return Response({
+            'status': "error",
+            'message': "El nombre del motivo es requerido",
+            'data': None
+        }, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        categoria, _ = categoria_movimiento.objects.get_or_create(categoria='ENCARGADURIA')
+        if Tipo_movimiento.objects.filter(movimiento=nombre, categoriaId=categoria).exists():
+            return Response({
+                'status': "error",
+                'message': "Este motivo ya existe",
+                'data': None
+            }, status=status.HTTP_400_BAD_REQUEST)
+        motivo = Tipo_movimiento.objects.create(movimiento=nombre, categoriaId=categoria)
+        return Response({
+            'status': "success",
+            'message': "Motivo creado correctamente",
+            'data': TipoMovimientoSerializer(motivo).data
+        }, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({
+            'status': "error",
+            'message': str(e),
+            'data': None
+        }, status=status.HTTP_400_BAD_REQUEST)

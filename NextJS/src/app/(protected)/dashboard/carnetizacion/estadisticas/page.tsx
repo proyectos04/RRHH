@@ -12,50 +12,17 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
-
-interface UltimoCarnet {
-  nombre: string;
-  cedula: string;
-  fecha: string;
-  motivo: string;
-  activo: boolean;
-}
-
-interface EstadisticasData {
-  total: number;
-  activos: number;
-  hoy: number;
-  this_month: number;
-  tamano_total: string;
-  ultimos: UltimoCarnet[];
-}
+import useSWR from "swr";
+import { getEstadisticas } from "../api/getInfoCarnet";
+import type { UltimoCarnet } from "../types/carnetizacion";
 
 export default function EstadisticasPage() {
-  const [stats, setStats] = useState<EstadisticasData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading } = useSWR(
+    "estadisticas-carnetizacion",
+    getEstadisticas,
+  );
 
-  const djangoUrl =
-    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace("/api/", "") ||
-    "http://localhost:8000";
-
-  useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const res = await fetch(`${djangoUrl}/carnetizacion/estadisticas/`);
-        const data = await res.json();
-        setStats(data);
-      } catch {
-        toast.error("Error al cargar estadísticas");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadStats();
-  }, [djangoUrl]);
-
-  if (loading) {
+  if (isLoading) {
     return (
       <PageLayout title="Estadísticas">
         <div className="flex justify-center items-center py-20">
@@ -70,7 +37,6 @@ export default function EstadisticasPage() {
       title="Estadísticas de Carnetización"
       description="Resumen de carnets generados y uso del sistema"
     >
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
         <Card className="border-l-4 border-l-blue-500 shadow-sm">
           <CardContent className="pt-6">
@@ -145,7 +111,6 @@ export default function EstadisticasPage() {
         </Card>
       </div>
 
-      {/* Últimos carnets */}
       <Card className="mt-6 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -167,7 +132,7 @@ export default function EstadisticasPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.ultimos.map((carnet, i) => (
+                  {stats.ultimos.map((carnet: UltimoCarnet, i: number) => (
                     <tr key={i} className="border-b last:border-b-0 hover:bg-gray-50 transition-colors">
                       <td className="py-3 font-medium">{carnet.nombre}</td>
                       <td className="py-3 text-muted-foreground">{carnet.cedula}</td>

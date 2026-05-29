@@ -1,5 +1,6 @@
 "use server";
 
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 import z from "zod";
 import { schemaEmployeeEdit } from "../../../gestion-trabajadores/personal-trabajador/registrar/schemas/schemaRac";
@@ -16,18 +17,14 @@ export async function updateEmployee(
         message: "Error En Los Campos De Actualizacion",
       };
     }
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}empleados-actualizar/${cedula}/`,
+    const message = await apiFetch<ApiResponse<string>>(
+      `empleados-actualizar/${cedula}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(values),
       },
     );
-    const message: ApiResponse<string> = await response.json();
-    if (!response.ok) {
+    if (message.status !== "success") {
       return {
         success: false,
         message: message.message,

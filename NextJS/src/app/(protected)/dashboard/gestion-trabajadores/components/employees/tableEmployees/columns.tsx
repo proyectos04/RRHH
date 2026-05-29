@@ -11,6 +11,7 @@ import {
 import { DropdownMenuSeparator } from "@radix-ui/react-dropdown-menu";
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { DataTableColumnHeader } from "./data-table-column-header";
 
 import ExportButton from "@/components/ui/ExportButtonPDF";
@@ -58,21 +59,28 @@ export const columns: ColumnDef<EmployeeData>[] = [
     },
   },
   {
-    accessorKey: "n_contrato",
-    header: "N. De Ingreso",
+    id: "estatus_contrato",
+    accessorKey: "contrato",
+    header: "Estatus Contrato",
     cell: ({ getValue }) => {
-      const numero = getValue();
-      return <span>{numero ? numero.toString() : "N/A"}</span>;
+      const contratos = getValue() as { estatus?: { estatus: string } }[] | null;
+      const activo = contratos?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER');
+      if (!activo?.estatus) return <span>N/A</span>;
+      const estatus = activo.estatus.estatus;
+      const color = estatus === 'ACTIVO' ? 'bg-green-600' : estatus === 'POR VENCER' ? 'bg-yellow-500' : 'bg-red-600';
+      return <Badge className={`${color} text-white`}>{estatus}</Badge>;
     },
   },
   {
-    accessorKey: "fechaingresoorganismo",
-    header: "F. Ingreso Al Organismo",
+    accessorKey: "contrato",
+    header: "F. Ingreso Organismo",
+    id: "fecha_ingreso_org",
     cell: ({ getValue }) => {
-      const fecha = getValue() as string;
+      const contratos = getValue() as { fecha_ingreso?: string; estatus?: { estatus: string } }[] | null;
+      const activo = contratos?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER');
+      const fecha = activo?.fecha_ingreso;
       return (
         <span>
-          {" "}
           {fecha ? formatInTimeZone(fecha, "UTC", "dd/MM/yyy") : "N/A"}
         </span>
       );

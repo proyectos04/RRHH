@@ -98,16 +98,24 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
     },
   },
   {
-    accessorKey: "n_contrato",
-    header: "Número De Ingreso",
+    id: "n_contrato",
+    accessorKey: "contrato",
+    header: "Número De Contrato",
     cell: ({ getValue }) => {
-      const numero = getValue();
-      return <span>{numero ? numero.toString() : "N/A"}</span>;
+      const contratos = getValue() as { n_contrato?: string; estatus?: { estatus: string } }[] | null;
+      const activo = contratos?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER');
+      return <span>{activo?.n_contrato || "N/A"}</span>;
     },
   },
   {
-    accessorKey: "fechaingresoorganismo",
+    accessorKey: "contrato",
     header: "F. Ingreso Al Organismo",
+    id: "fecha_ingreso_org",
+    cell: ({ getValue }) => {
+      const contratos = getValue() as { fecha_ingreso?: string; estatus?: { estatus: string } }[] | null;
+      const activo = contratos?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER');
+      return <span>{activo?.fecha_ingreso || "N/A"}</span>;
+    },
   },
 
   {
@@ -256,7 +264,7 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
                                       {v.fecha_ingreso}
                                     </TableCell>
                                     <TableCell>{v.fecha_egreso}</TableCell>
-                                    <TableCell>{v.institucion}</TableCell>
+                                    <TableCell>{v.organismo?.Organismoadscrito ?? "N/A"}</TableCell>
                                   </TableRow>
                                 ))}
                                 <TableRow>
@@ -318,30 +326,26 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
                           <div className="grid grid-cols-2 place-content-center">
                             <div>Nivel Academico:</div>
                             <div>
-                              {employee.formacion_academica?.nivelAcademico
+                              {employee.formacion_academica?.[0]?.nivelAcademico
                                 ?.nivelacademico ?? "N/A"}
                             </div>
                             <div>Carrera:</div>
                             <div>
-                              {employee.formacion_academica?.carrera
+                              {employee.formacion_academica?.[0]?.carrera
                                 ?.nombre_carrera ?? "N/A"}
                             </div>
                             <div>Mención:</div>
                             <div>
-                              {employee.formacion_academica?.mension
+                              {employee.formacion_academica?.[0]?.mension
                                 ?.nombre_mencion ?? "N/A"}
                             </div>
                             <div>Institucion:</div>
                             <div>
-                              {employee.formacion_academica?.institucion ??
+                              {employee.formacion_academica?.[0]?.institucion?.nombre_institucion ??
                                 "N/A"}
                             </div>
 
-                            <div>Capacitación</div>
-                            <div>
-                              {employee.formacion_academica?.capacitacion ??
-                                "N/A"}
-                            </div>
+                            
                           </div>
                         </CardContent>
                       </Card>
@@ -356,20 +360,20 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
                           <div className="grid grid-cols-2 place-content-center">
                             <div>Talla De Camisa:</div>
                             <div>
-                              {employee.perfil_fisico?.tallaCamisa?.talla ??
+                              {employee.perfil_fisico?.tallaCamisa?.valor ??
                                 "N/A"}
                             </div>
                             <div>Talla de Pantalon:</div>
                             <div>
                               <div>
-                                {employee.perfil_fisico?.tallaPantalon?.talla ??
+                                {employee.perfil_fisico?.tallaPantalon?.valor ??
                                   "N/A"}
                               </div>
                             </div>
                             <div>Talla De Calzado:</div>
                             <div>
                               <div>
-                                {employee.perfil_fisico?.tallaZapatos?.talla ??
+                                {employee.perfil_fisico?.tallaZapatos?.valor ??
                                   "N/A"}
                               </div>
                             </div>
@@ -388,7 +392,7 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
                             <div>Tipo De Sangre:</div>
                             <div>
                               {employee.perfil_salud?.grupoSanguineo
-                                ?.grupoSanguineo ?? "N/A"}
+                                ?.GrupoSanguineo ?? "N/A"}
                             </div>
                             {employee.perfil_salud?.patologiasCronicas &&
                               employee.perfil_salud.patologiasCronicas.length >

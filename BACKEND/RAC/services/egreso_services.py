@@ -5,7 +5,7 @@ from ..models.personal_models import (
     AsigTrabajo, Employee, Estatus, Tipo_personal, Dependencias,
     DireccionGeneral, Denominacioncargo, Denominacioncargoespecifico,
     Tiponomina, perfil_salud, perfil_fisico, formacion_academica,
-    antecedentes_servicio,
+    antecedentes_servicio, contratos,
 )
 from ..models.family_personal_models import Employeefamily
 from ..services.constants_historial import registrar_historial_movimiento
@@ -77,20 +77,34 @@ def validar_y_preparar_sobrevivientes(sobrevivientes_input):
 
 def procesar_egreso_total(empleado, motivo, usuario, estatus_vacante):
     estatus_egresado = Estatus.objects.get(estatus__iexact="EGRESADO")
+    estatus_vencido = Estatus.objects.get(estatus__iexact="VENCIDO")
 
     fecha_hoy = timezone.now().date()
     asignaciones = AsigTrabajo.objects.filter(employee=empleado)
 
-    antecedentes_servicio.objects.create(
+    antecedente_activo = antecedentes_servicio.objects.filter(
         empleado_id=empleado,
-        institucion="MPPRIJP",
-        fecha_ingreso=empleado.fechaingresoorganismo,
-        fecha_egreso=fecha_hoy,
-    )
+        fecha_egreso__isnull=True
+    ).first()
+
+    n_contrato_value = None
+    fecha_ingreso_value = fecha_hoy
+
+    if antecedente_activo:
+        antecedente_activo.fecha_egreso = fecha_hoy
+        antecedente_activo.save()
+        fecha_ingreso_value = antecedente_activo.fecha_ingreso
+
+        contrato = contratos.objects.filter(antecedente_id=antecedente_activo).first()
+        if contrato:
+            n_contrato_value = contrato.n_contrato
+            contrato.estatus_id = estatus_vencido
+            contrato.save()
+
     egreso_obj = EmployeeEgresado.objects.create(
         employee=empleado,
-        n_contrato=empleado.n_contrato,
-        fechaingresoorganismo=empleado.fechaingresoorganismo,
+        n_contrato=n_contrato_value,
+        fechaingresoorganismo=fecha_ingreso_value,
         motivo_egreso=motivo,
     )
 
@@ -184,7 +198,6 @@ def ejecutar_creacion_sobrevivientes(familiares_validados, nomina_pension, usuar
             fecha_nacimiento=fam.fechanacimiento,
             sexoid=fam.sexo,
             estadoCivil=fam.estadoCivil,
-            fechaingresoorganismo=timezone.now().date(),
         )
 
         salud = perfil_salud.objects.filter(familiar_id=fam).first()

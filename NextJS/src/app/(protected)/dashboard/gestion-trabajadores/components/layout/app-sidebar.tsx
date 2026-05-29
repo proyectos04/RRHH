@@ -223,6 +223,15 @@ const items: MenuItem[] = [
         },
       },
       {
+        title: "Préstamo de Cargo",
+        url: "/dashboard/gestion-trabajadores/movimientos/prestamo-cargo",
+        icon: ArrowRightLeft,
+        permission: {
+          roleAccept: ["ADMINISTRADOR"],
+          departmentAccept: ["RAC"],
+        },
+      },
+      {
         title: "Cambiar Cargo",
         url: "/dashboard/gestion-trabajadores/movimientos/cambiar-codigo",
         icon: BriefcaseConveyorBelt,
@@ -315,6 +324,11 @@ const items: MenuItem[] = [
     icon: FolderOpenDot,
     title: "Retroalimentación",
     url: "/dashboard/gestion-trabajadores/retroalimentacion",
+  },
+  {
+    icon: BookCheck,
+    title: "Autogestión",
+    url: "/dashboard/autogestion",
   },
 ];
 

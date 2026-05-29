@@ -7,26 +7,26 @@ import {
   Formity,
 } from "@formity/react";
 
-import FormAcademyLevel from "./form-academic_training";
-import FormPhysical from "./form-physical_profile";
-import FormDwelling from "./form-dwelling";
-import FormHealth from "./form-health_profile";
-import { FormBasicInfo } from "./form-basic-info";
-import FormBackground from "./form-background";
-import FormSupplementaryTraining from "./form-supplementary_training";
+import FormAcademyLevel from "@/shared/forms/employees/register/form-academic_training";
+import FormPhysical from "@/shared/forms/employees/register/form-physical_profile";
+import FormDwelling from "@/shared/forms/employees/register/form-dwelling";
+import FormHealth from "@/shared/forms/employees/register/form-health_profile";
+import { FormBasicInfo } from "@/shared/forms/employees/register/form-basic-info";
+import FormBackground from "@/shared/forms/employees/register/form-background";
+import FormSupplementaryTraining from "@/shared/forms/employees/register/form-supplementary_training";
 
 import { toast } from "sonner";
 import { useCallback, useEffect, useState, useTransition } from "react";
-import { BasicInfoType } from "../schemas/schema-basic-info";
-import { AcademyType } from "../schemas/schema-academic_training";
-import { BackgroundType } from "../schemas/schema-background";
-import { SupplementaryTrainingType } from "../schemas/schema-supplementary_training";
-import { HealthType } from "../schemas/schema-health_profile";
-import { PhysicalProfileType } from "../schemas/schema-physical_profile";
-import { DwellingType } from "../schemas/schema-dwelling";
+import { BasicInfoType } from "@/shared/schemas/employees/register/schema-basic-info";
+import { AcademyType } from "@/shared/schemas/employees/register/schema-academic_training";
+import { BackgroundType } from "@/shared/schemas/employees/register/schema-background";
+import { SupplementaryTrainingType } from "@/shared/schemas/employees/register/schema-supplementary_training";
+import { HealthType } from "@/shared/schemas/employees/register/schema-health_profile";
+import { PhysicalProfileType } from "@/shared/schemas/employees/register/schema-physical_profile";
+import { DwellingType } from "@/shared/schemas/employees/register/schema-dwelling";
 import { registerEmployeeSteps } from "../actions/formStepActions";
-import { FamilyEmployeeType } from "../schemas/schema-family_employee";
-import { FormFamilyEmployee } from "./form-family";
+import { FamilyEmployeeType } from "@/shared/schemas/employees/register/schema-family_employee";
+import { FormFamilyEmployee } from "@/shared/forms/employees/register/form-family";
 import Loading from "../../../components/loading/loading";
 type Values = [
   FormFormity<BasicInfoType>,
@@ -57,8 +57,6 @@ const schema: SchemaFormity<Values> = [
         apellidos: ["", []],
         file: [null as unknown as File, []],
         fecha_nacimiento: [new Date(), []],
-        fechaingresoorganismo: [new Date(), []],
-        n_contrato: ["", []],
         sexoid: [0, []],
         estadoCivil: [0, []],
       }),
@@ -72,21 +70,21 @@ const schema: SchemaFormity<Values> = [
     form: {
       values: () => ({
         formacion_academica: [
-          {
-            nivel_Academico_id: 0,
-            carrera_id: 0,
-            mencion_id: 0,
-            capacitacion: "",
-            institucion: "",
-          },
+          [
+            {
+              nivel_Academico_id: 0,
+              carrera_id: undefined,
+              mencion_id: undefined,
+              institucion_id: undefined,
+            },
+          ],
           [],
         ],
       }),
-      render: ({ values, onNext, onBack }) => (
+      render: ({ values, onNext }) => (
         <FormAcademyLevel
           defaultValues={values}
           onSubmit={onNext}
-          onBack={onBack}
         />
       ),
     },
@@ -99,8 +97,10 @@ const schema: SchemaFormity<Values> = [
             {
               fecha_inicio: undefined,
               fecha_fin: undefined,
-              institucion: "",
-              capacitacion: "",
+              institucion_id: undefined,
+              capacitacion_id: undefined,
+              procedencia_id: undefined,
+              horas_completadas: undefined,
             },
           ],
           [],
@@ -117,11 +117,10 @@ const schema: SchemaFormity<Values> = [
   {
     form: {
       values: () => ({
-        fechaingresoorganismo: [new Date(), []],
         antecedentes: [
           [
             {
-              institucion: "",
+              organismo_id: undefined,
               fecha_ingreso: undefined,
               fecha_egreso: undefined,
             },
@@ -158,9 +157,9 @@ const schema: SchemaFormity<Values> = [
         perfil_fisico: [
           {
             tallaCamisa: 0,
-
             tallaPantalon: 0,
             tallaZapatos: 0,
+            tallaChaqueta: 0,
           },
           [],
         ],
@@ -179,7 +178,6 @@ const schema: SchemaFormity<Values> = [
             estado_id: 0,
             municipio_id: 0,
             parroquia: 0,
-
             condicion_vivienda_id: 0,
           },
           [],

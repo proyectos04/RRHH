@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import {
   SchemaUpdatePhysical,
@@ -6,11 +7,7 @@ import {
 } from "../schema/schemaPhysicalUpdate";
 import { SelectForm } from "@/components/select-form";
 import useSWR from "swr";
-import {
-  getPantsSize,
-  getShirtSize,
-  getShoesSize,
-} from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
+import { getTallas } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { useTransition } from "react";
@@ -34,18 +31,24 @@ export default function UpdateFormPhysical({ id, mutate }: Props) {
       },
     },
   });
-  const { data: shirtSize, isLoading: isLoadingShirtSize } = useSWR(
-    "shirtSize",
-    async () => await getShirtSize(),
+  const { data: tallas, isLoading } = useSWR(
+    "tallas",
+    async () => await getTallas(),
   );
-  const { data: pantsSize, isLoading: isLoadingPantsSize } = useSWR(
-    "pantsSize",
-    async () => await getPantsSize(),
+
+  const camisas = useMemo(
+    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Camisa") ?? [],
+    [tallas],
   );
-  const { data: shoesSize, isLoading: isLoadingShoesSize } = useSWR(
-    "shoesSize",
-    async () => await getShoesSize(),
+  const pantalones = useMemo(
+    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Pantalón") ?? [],
+    [tallas],
   );
+  const zapatos = useMemo(
+    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Zapato") ?? [],
+    [tallas],
+  );
+
   const searchParams = useSearchStore((state) => state.searchParams);
 
   const onSubmit = (values: SchemaUpdatePhysical) => {
@@ -68,30 +71,30 @@ export default function UpdateFormPhysical({ id, mutate }: Props) {
             Formlabel="Talla de Camisa"
             SelectLabelItem="Seleccione una talla de camisa"
             form={form}
-            isLoading={isLoadingShirtSize}
-            labelKey={"talla"}
+            isLoading={isLoading}
+            labelKey={"valor"}
             nameSalect="perfil_fisico_familiar.tallaCamisa"
             valueKey="id"
             placeholder="Seleccione una talla de camisa"
-            options={shirtSize?.data ?? []}
+            options={camisas}
           />
           <SelectForm
             Formlabel="Talla de pantalones"
             SelectLabelItem="Seleccione una talla de pantalones"
             form={form}
-            options={pantsSize?.data ?? []}
-            isLoading={isLoadingPantsSize}
-            labelKey="talla"
+            options={pantalones}
+            isLoading={isLoading}
+            labelKey="valor"
             nameSalect="perfil_fisico_familiar.tallaPantalon"
             valueKey="id"
             placeholder="Seleccione una talla de pantalones"
           />
           <SelectForm
-            options={shoesSize?.data ?? []}
+            options={zapatos}
             SelectLabelItem="Seleccione una talla de zapatos"
             form={form}
-            isLoading={isLoadingShoesSize}
-            labelKey="talla"
+            isLoading={isLoading}
+            labelKey="valor"
             nameSalect="perfil_fisico_familiar.tallaZapatos"
             placeholder="Seleccione una talla de zapatos"
             valueKey="id"

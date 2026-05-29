@@ -5,38 +5,33 @@ import {
   schemaCreateDirectionGeneralDp,
   schemaCreateDirectionLineDirection,
 } from "../schema/schemaCreateDirectionDependency";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 export async function createDirectionGeneral(
   values: z.infer<typeof schemaCreateDirectionGeneralDp>,
 ) {
-  const { success } = schemaCreateDirectionGeneralDp.safeParse(values);
-  if (!success) {
+  try {
+    const { success } = schemaCreateDirectionGeneralDp.safeParse(values);
+    if (!success) {
+      return {
+        success: false,
+        message: "Error Al Validar Los Datos",
+      };
+    }
+    const data = await apiFetch<ApiResponse<never>>(
+      `register-direccionGeneral/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ ...values }),
+      },
+    );
+    return { success: data.status === "success", message: data.message };
+  } catch {
     return {
       success: false,
-      message: "Error Al Validar Los Datos",
+      message: "Ocurrio Un Error",
     };
   }
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-direccionGeneral/`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ ...values }),
-    },
-  );
-  const apiResponse: ApiResponse<never> = await response.json();
-  if (response.ok) {
-    return {
-      success: true,
-      message: apiResponse.message,
-    };
-  }
-  return {
-    success: false,
-    message: apiResponse.message,
-  };
 }
 
 export async function createDirectionLine(
@@ -50,28 +45,14 @@ export async function createDirectionLine(
         message: "Error Al Validar Los Datos",
       };
     }
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-direccionLinea/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `register-direccionLinea/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...values }),
       },
     );
-    const apiResponse: ApiResponse<never> = await response.json();
-
-    if (response.ok) {
-      return {
-        success: true,
-        message: apiResponse.message,
-      };
-    }
-    return {
-      success: false,
-      message: apiResponse.message,
-    };
+    return { success: data.status === "success", message: data.message };
   } catch {
     return {
       success: false,
@@ -90,28 +71,14 @@ export async function createDirectionCordination(
     };
   }
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-Coordinacion/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `register-Coordinacion/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...values }),
       },
     );
-    const apiResponse: ApiResponse<never> = await response.json();
-
-    if (response.ok) {
-      return {
-        success: true,
-        message: apiResponse.message,
-      };
-    }
-    return {
-      success: false,
-      message: apiResponse.message,
-    };
+    return { success: data.status === "success", message: data.message };
   } catch {
     return {
       success: false,

@@ -1,4 +1,5 @@
 "use server";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 import z from "zod";
 import { schemaRac } from "../schemas/schemaRac";
@@ -12,30 +13,23 @@ export async function registerEmployee(
       file,
       fecha_nacimiento,
       fechaingresoapn,
-      fechaingresoorganismo,
       ...data
     } = values;
     const payload = {
       ...data,
       fecha_nacimiento: fecha_nacimiento.toISOString(),
       fechaingresoapn: fechaingresoapn.toISOString(),
-      fechaingresoorganismo: fechaingresoorganismo.toISOString(),
       profile: file?.name,
     };
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL}employees_register/`,
-
+    const message = await apiFetch<ApiResponse<string>>(
+      `employees_register/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...payload, usuario_id: user_id }),
       },
     );
-    const message: ApiResponse<string> = await response.json();
-    if (!response.ok) {
+    if (message.status !== "success") {
       return {
         success: false,
         message: message.message,

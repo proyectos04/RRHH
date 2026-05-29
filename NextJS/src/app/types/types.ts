@@ -14,8 +14,10 @@ export type AcademyLevelEmployeeData = {
     id: number;
     nivelacademico: string;
   } | null;
-  institucion: string;
-  capacitacion: string;
+  institucion: {
+    id: number;
+    nombre_institucion: string;
+  } | null;
   carrera: {
     id: number;
     nombre_carrera: string;
@@ -27,6 +29,10 @@ export type AcademyLevelEmployeeData = {
       id: number;
       nombre_carrera: string;
     };
+  } | null;
+  capacitacion?: {
+    id: number;
+    nombre_capacitacion: string;
   } | null;
 };
 export interface Municipality {
@@ -150,6 +156,25 @@ export interface ShoesSize {
   id: number;
   talla: number;
 }
+
+export interface TallaItem {
+  id: number;
+  valor: string;
+  tipo_prenda: { id: number; categoria: string };
+  region: { id: number; codigo: string; descripcion?: string };
+}
+
+export interface TipoPrenda {
+  id: number;
+  categoria: string;
+}
+
+export interface RegionTalla {
+  id: number;
+  codigo: string;
+  descripcion?: string;
+}
+
 export interface MaritalStatusType {
   id: number;
   estadoCivil: string;
@@ -206,6 +231,7 @@ export interface DewllingInfo {
   municipio: Municipality;
   parroquia: Parish;
   direccion_exacta: string;
+  codigo_postal: string | null;
   condicion: {
     id: number;
     condicion: string;
@@ -250,22 +276,35 @@ export interface HealthProfile {
 
 export interface Background {
   id: number;
-  institucion: string | null;
+  organismo: OrganismosAds | null;
+  organismo_id?: number;
   fecha_ingreso: string | null;
   fecha_egreso: string | null;
   fecha_actualizacion: string | null;
+  tiempo_servicio: TiempoServicio | null;
+}
+
+export interface TiempoServicio {
+  years: number;
+  months: number;
+  days: number;
+  total_dias?: number;
 }
 export interface SupplementaryTraining {
   id: number;
-  capacitacion: string | null;
+  capacitacion: { id: number; nombre_capacitacion: string } | null;
+  institucion: { id: number; nombre_institucion: string } | null;
+  procedencia: { id: number; tipo_procedencia: string } | null;
+  grupo: { id: number; nombre_grupo: string } | null;
+  horas_completadas: string | null;
   fecha_inicio: string | null;
   fecha_fin: string | null;
-  institucion: string | null;
 }
 export interface PhysicalProfile {
-  tallaCamisa: ShirtSize | null;
-  tallaPantalon: PantsSize | null;
-  tallaZapatos: ShoesSize | null;
+  tallaCamisa: TallaItem | null;
+  tallaPantalon: TallaItem | null;
+  tallaZapatos: TallaItem | null;
+  tallaChaqueta: TallaItem | null;
 }
 export interface InfoCode {
   id: number;
@@ -280,8 +319,7 @@ export interface InfoCode {
   DireccionLinea: DireccionLinea | null;
   Coordinacion: Coordination | null;
   estatusid: Status;
-  tipo_comision: TipoComision | null;
-  encargaduria: boolean;
+  tipo_procedencia: TipoProcedencia | null;
   observaciones: string | null;
   fecha_actualizacion: string;
 }
@@ -308,30 +346,70 @@ export interface UserSystem {
   direccion_linea: DireccionLinea | null;
   coordinacion: Coordination | null;
 }
+export interface Politica {
+  id: number;
+  tipo_politica: string;
+}
+
+export interface Contrato {
+  id: number;
+  n_contrato: string;
+  fecha_ingreso: string | null;
+  fecha_culminacion: string | null;
+  fecha_egreso: string | null;
+  politica: Politica | null;
+  estatus: Status | null;
+}
+
+export interface PrestamoCargoData {
+  id: number;
+  empleado_encargado: string;
+  cargo_encargado: number;
+  cargo_info: InfoCode;
+  motivo: number;
+  motivo_nombre: string;
+  estatus: number;
+  estatus_nombre: string;
+  empleado_nombre: string;
+  empleado_cedula: string;
+  titular_nombre: string;
+  titular_cedula: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  fecha_creacion: string;
+}
+
+export interface MotivoEncargaduria {
+  id: number;
+  movimiento: string;
+}
+
 export interface EmployeeData {
   anos_apn: number;
+  total_apn: TiempoServicio;
   id: number;
   cedulaidentidad: string;
   nombres: string;
   apellidos: string;
   profile: string;
   fecha_nacimiento: string;
-  n_contrato: string;
+  contrato: Contrato[] | null;
   sexo: Sex;
   estadoCivil: StatusCivil;
   datos_vivienda: DewllingInfo;
   perfil_salud: HealthProfile;
   perfil_fisico: PhysicalProfile;
-  formacion_academica: AcademyLevelEmployeeData;
+  formacion_academica: AcademyLevelEmployeeData[];
   antecedentes: Background[];
   formacion_complementaria: SupplementaryTraining[];
-  fechaingresoorganismo: string;
   fecha_actualizacion: string;
   asignaciones: InfoCode[];
+  encargadurias: PrestamoCargoData[];
   correo: string | null;
   telefono_habitacion: string | null;
   telefono_movil: string | null;
 }
+
 export interface Sex {
   id: number;
   sexo: string;
@@ -347,7 +425,7 @@ export interface EmployeeInfo {
   apellidos: string;
   profile: string;
   fecha_nacimiento: string;
-  n_contrato: string;
+  contrato: Contrato[] | null;
   sexo: Sex;
   estadoCivil: StatusCivil;
   datos_vivienda: DewllingInfo;
@@ -392,9 +470,9 @@ export interface ConditionDwelling {
   id: number;
   condicion: string;
 }
-export interface TipoComision {
+export interface TipoProcedencia {
   id: number;
-  tipo_comision: string;
+  tipo_procedencia: string;
 }
 export interface Parish {
   id: number;
@@ -461,4 +539,21 @@ export interface Leaving {
   fecha_egreso: string;
   Tipo_movimiento: TypeMovement;
   cargos: InfoCode[];
+}
+
+export interface TipoPregunta {
+  id: number;
+  nombre: string;
+}
+
+export interface Opcion {
+  id: number;
+  tipo_opcion: string;
+}
+
+export interface Pregunta {
+  id: number;
+  enunciado: string;
+  tipo: TipoPregunta;
+  opciones: Opcion[];
 }

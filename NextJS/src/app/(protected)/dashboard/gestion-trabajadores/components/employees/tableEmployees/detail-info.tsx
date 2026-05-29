@@ -34,30 +34,29 @@ import {
 import Image from "next/image";
 import { useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import { imageProfileFn } from "../../../api/getInfoRac";
-import FormUpdateAcademyLevel from "./updateInfo/forms/form-academic_training";
-import FormUpdateBackground from "./updateInfo/forms/form-background";
-import { FormBasicUpdateInfo } from "./updateInfo/forms/form-basic-info";
-import FormUpdateDwelling from "./updateInfo/forms/form-dwelling";
-import FormUpdateHealth from "./updateInfo/forms/form-health_profile";
-import FormUpdatePhysical from "./updateInfo/forms/form-physical_profile";
-import FormUpdateSupplementaryTraining from "./updateInfo/forms/form-supplementary_training";
-import { useSearchStore } from "@/hooks/use-search-params";
+import { imageProfileFn } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
+import FormUpdateContrato from "@/shared/forms/employees/update/form-update-contrato";
+import FormUpdateAcademyLevel from "@/shared/forms/employees/update/form-academic_training";
+import FormUpdateBackground from "@/shared/forms/employees/update/form-background";
+import { FormBasicUpdateInfo } from "@/shared/forms/employees/update/form-basic-info";
+import FormUpdateDwelling from "@/shared/forms/employees/update/form-dwelling";
+import FormUpdateHealth from "@/shared/forms/employees/update/form-health_profile";
+import FormUpdatePhysical from "@/shared/forms/employees/update/form-physical_profile";
+import FormUpdateSupplementaryTraining from "@/shared/forms/employees/update/form-supplementary_training";
+import updateInfoEmployee from "./updateInfo/actions/update-info";
 interface Props {
   employee: EmployeeData;
 }
 export default function DetailInfoEmployee({ employee }: Props) {
   const { mutate } = useSWRConfig();
-  const searchParams = useSearchStore((state) => state.searchParams);
   const { data: profileBlob } = useSWR(
-    ["profile", searchParams],
+    employee.cedulaidentidad ? ["profile", employee.cedulaidentidad] : null,
     () => imageProfileFn(employee.cedulaidentidad),
-    {
-      refreshInterval: 100,
-      revalidateOnFocus: false,
-    },
   );
-  const imageURL = profileBlob ? URL.createObjectURL(profileBlob) : "/bg.png";
+  const imageURL = useMemo(() => {
+    if (!profileBlob) return "/bg.png";
+    return URL.createObjectURL(profileBlob);
+  }, [profileBlob]);
 
   const totalAPN = useMemo(() => {
     if (!employee.antecedentes || employee.antecedentes.length === 0) return null;
@@ -108,14 +107,13 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 </DialogTrigger>
                 <DialogContent>
                   <FormBasicUpdateInfo
-                    mutate={mutate}
+                    mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                     idEmployee={employee.id.toString()}
                     cedulaidentidad={employee.cedulaidentidad}
                     defaultValues={{
                       apellidos: employee.apellidos,
                       estadoCivil: employee.estadoCivil.id,
                       fecha_nacimiento: new Date(employee.fecha_nacimiento),
-                      n_contrato: employee.n_contrato,
                       nombres: employee.nombres,
                       sexoid: employee.sexo.id,
                       file: undefined,
@@ -191,18 +189,18 @@ export default function DetailInfoEmployee({ employee }: Props) {
                             ? v.OrganismoAdscrito.Organismoadscrito
                             : "N/A"}
                         </div>
-                        <div>Tipo Comisión</div>
+                        <div>Tipo Procedencia</div>
                         <div>
-                          {v.tipo_comision?.tipo_comision ?? "N/A"}
+                          {v.tipo_procedencia?.tipo_procedencia ?? "N/A"}
                         </div>
                         <div>Encargaduría</div>
                         <div>
                           <Badge
                             variant={
-                              v.encargaduria ? "default" : "destructive"
+                              (v as any).encargaduria ? "default" : "destructive"
                             }
                           >
-                            {v.encargaduria ? "SÍ" : "NO"}
+                            {(v as any).encargaduria ? "SÍ" : "NO"}
                           </Badge>
                         </div>
                         <Separator
@@ -228,15 +226,12 @@ export default function DetailInfoEmployee({ employee }: Props) {
                       </DialogTrigger>
                       <DialogContent>
                         <FormUpdateBackground
-                          mutate={mutate}
+                          mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                           idEmployee={employee.id.toString()}
                           defaultValues={{
-                            fechaingresoorganismo: new Date(
-                              employee.fechaingresoorganismo,
-                            ),
-                            antecedentes:
+                                                        antecedentes:
                               employee.antecedentes?.map((ant) => ({
-                                institucion: ant.institucion ?? undefined,
+                                institucion_id: ant.organismo?.id ?? undefined,
                                 fecha_ingreso: ant.fecha_ingreso
                                   ? new Date(ant.fecha_ingreso)
                                   : undefined,
@@ -291,7 +286,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                             </TableCell>
 
                             <TableCell className="truncate max-w-[200px]">
-                              {v.institucion}
+                              {v.organismo?.Organismoadscrito ?? "N/A"}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -319,15 +314,12 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 </DialogTrigger>
                 <DialogContent>
                   <FormUpdateBackground
-                    mutate={mutate}
+                    mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                     idEmployee={employee.id.toString()}
                     defaultValues={{
-                      fechaingresoorganismo: new Date(
-                        employee.fechaingresoorganismo,
-                      ),
-                      antecedentes:
+                                            antecedentes:
                         employee.antecedentes?.map((ant) => ({
-                          institucion: ant.institucion ?? undefined,
+                          institucion_id: ant.organismo?.id ?? undefined,
                           fecha_ingreso: ant.fecha_ingreso
                             ? new Date(ant.fecha_ingreso)
                             : undefined,
@@ -361,7 +353,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <DialogContent>
                       <FormUpdateDwelling
                         idEmployee={employee.id.toString()}
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                       />
                     </DialogContent>
                   </Dialog>
@@ -408,9 +400,18 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <DialogContent>
                       <FormUpdateAcademyLevel
                         idEmployee={employee.id.toString()}
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                         defaultValues={{
-                          formacion_academica: employee.formacion_academica,
+                          formacion_academica:
+                            employee.formacion_academica?.length
+                              ? employee.formacion_academica.map((fa) => ({
+                                  nivel_Academico_id:
+                                    fa.nivelAcademico?.id ?? 0,
+                                  carrera_id: fa.carrera?.id ?? 0,
+                                  mencion_id: fa.mension?.id ?? 0,
+                                  institucion_id: fa.institucion?.id ?? 0,
+                                }))
+                              : [],
                         }}
                       />
                     </DialogContent>
@@ -418,32 +419,43 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 place-content-center">
-                  <div>Nivel Academico:</div>
-                  <div>
-                    {employee.formacion_academica?.nivelAcademico
-                      ?.nivelacademico ?? "N/A"}
+                {employee.formacion_academica?.length ? (
+                  <Table className="table-fixed w-full">
+                    <TableCaption>
+                      Lista De Formaciones Academicas.
+                    </TableCaption>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nivel Academico</TableHead>
+                        <TableHead>Carrera</TableHead>
+                        <TableHead>Mención</TableHead>
+                        <TableHead>Institución</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employee.formacion_academica.map((v, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium">
+                            {v.nivelAcademico?.nivelacademico ?? "N/A"}
+                          </TableCell>
+                          <TableCell className="truncate max-w-[150px]">
+                            {v.carrera?.nombre_carrera ?? "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {v.mension?.nombre_mencion ?? "N/A"}
+                          </TableCell>
+                          <TableCell className="truncate max-w-[200px]">
+                            {v.institucion?.nombre_institucion ?? "N/A"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    Sin formación académica registrada
                   </div>
-                  <div>Carrera:</div>
-                  <div>
-                    {employee.formacion_academica?.carrera?.nombre_carrera ??
-                      "N/A"}
-                  </div>
-                  <div>Mención:</div>
-                  <div>
-                    {employee.formacion_academica?.mension?.nombre_mencion ??
-                      "N/A"}
-                  </div>
-                  <div>Institución:</div>
-                  <div>
-                    {employee.formacion_academica?.institucion ?? "N/A"}
-                  </div>
-
-                  <div>Capacitación</div>
-                  <div>
-                    {employee.formacion_academica?.capacitacion ?? "N/A"}
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
             {Array.isArray(employee.formacion_complementaria) &&
@@ -464,7 +476,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                       <DialogContent>
                         <FormUpdateSupplementaryTraining
                           idEmployee={employee.id.toString()}
-                          mutate={mutate}
+                          mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                           defaultValues={{
                             formacion_complementaria:
                               employee.formacion_complementaria.map((v) => ({
@@ -474,8 +486,11 @@ export default function DetailInfoEmployee({ employee }: Props) {
                                 fecha_fin: v.fecha_fin
                                   ? new Date(v.fecha_fin)
                                   : undefined,
-                                institucion: v.institucion ?? undefined,
-                                capacitacion: v.capacitacion ?? undefined,
+                                institucion_id: v.institucion?.id ?? undefined,
+                                capacitacion_id: v.capacitacion?.id ?? undefined,
+                                procedencia_id: v.procedencia?.id ?? undefined,
+                                grupo_id: v.grupo?.id ?? undefined,
+                                horas_completadas: v.horas_completadas ?? undefined,
                               })),
                           }}
                         />
@@ -498,13 +513,16 @@ export default function DetailInfoEmployee({ employee }: Props) {
                           Fecha De Fin
                         </TableHead>
                         <TableHead>Institución</TableHead>
+                        <TableHead>Procedencia</TableHead>
+                        <TableHead>Grupo</TableHead>
+                        <TableHead>Horas</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {employee.formacion_complementaria.map((v, i) => (
                         <TableRow key={i}>
                           <TableCell className="font-medium">
-                            {v.capacitacion ?? "N/A"}
+                            {v.capacitacion?.nombre_capacitacion ?? "N/A"}
                           </TableCell>
                           <TableCell>
                             {v.fecha_inicio
@@ -525,7 +543,16 @@ export default function DetailInfoEmployee({ employee }: Props) {
                               : "N/A"}
                           </TableCell>
                           <TableCell className="truncate max-w-[200px]">
-                            {v.institucion ?? "N/A"}
+                            {v.institucion?.nombre_institucion ?? "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {v.procedencia?.tipo_procedencia ?? "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {v.grupo?.nombre_grupo ?? "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {v.horas_completadas ?? "N/A"}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -547,14 +574,17 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 <DialogContent>
                   <FormUpdateSupplementaryTraining
                     idEmployee={employee.id.toString()}
-                    mutate={mutate}
+                    mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                     defaultValues={{
                       formacion_complementaria: [
                         {
                           fecha_inicio: undefined,
                           fecha_fin: undefined,
-                          institucion: undefined,
-                          capacitacion: undefined,
+                          institucion_id: undefined,
+                          capacitacion_id: undefined,
+                          procedencia_id: undefined,
+                          grupo_id: undefined,
+                          horas_completadas: undefined,
                         },
                       ],
                     }}
@@ -580,7 +610,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <DialogContent>
                       <FormUpdatePhysical
                         idEmployee={employee.id.toString()}
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                         defaultValues={{
                           perfil_fisico: {
                             tallaCamisa:
@@ -601,18 +631,18 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 <div className="grid grid-cols-2 place-content-center">
                   <div>Talla De Camisa:</div>
                   <div>
-                    {employee.perfil_fisico?.tallaCamisa?.talla ?? "N/A"}
+                    {employee.perfil_fisico?.tallaCamisa?.valor ?? "N/A"}
                   </div>
                   <div>Talla de Pantalon:</div>
                   <div>
                     <div>
-                      {employee.perfil_fisico?.tallaPantalon?.talla ?? "N/A"}
+                      {employee.perfil_fisico?.tallaPantalon?.valor ?? "N/A"}
                     </div>
                   </div>
                   <div>Talla De Calzado:</div>
                   <div>
                     <div>
-                      {employee.perfil_fisico?.tallaZapatos?.talla ?? "N/A"}
+                      {employee.perfil_fisico?.tallaZapatos?.valor ?? "N/A"}
                     </div>
                   </div>
                 </div>
@@ -637,7 +667,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <DialogContent>
                       <FormUpdateHealth
                         idEmployee={employee.id.toString()}
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                         defaultValues={{
                           perfil_salud: {
                             grupoSanguineo: Number(

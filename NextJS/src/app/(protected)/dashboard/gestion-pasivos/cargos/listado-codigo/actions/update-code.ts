@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 import { UpdateCodeTable } from "../schema/schema-update-code";
 
@@ -19,27 +20,14 @@ export async function updateCodeTable(values: UpdateCodeTable, id: number) {
       usuario_id: userId,
       ...valuesNotCode,
     };
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}cargos/pasivo/${id}/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `cargos/pasivo/${id}/`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...payload }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
-    return {
-      success: false,
-      message: getResponse.message,
-    };
+    return { success: data.status === "success", message: data.message };
   } catch {
     return {
       success: false,

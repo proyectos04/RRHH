@@ -3,6 +3,7 @@
 import z from "zod";
 import { schemaChangeCode } from "../schema/schemaChangeCode";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export default async function ChangeCodeActions(
@@ -18,13 +19,10 @@ export default async function ChangeCodeActions(
     }
 
     const userId = Number.parseInt(session.user.id);
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}historyEmployee/cargo-movimiento/${values.code_old}/`,
+    const getResponse = await apiFetch<ApiResponse<never>>(
+      `historyEmployee/cargo-movimiento/${values.code_old}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           nuevo_cargo_id: values.nuevo_cargo_id,
           usuario_id: userId,
@@ -32,16 +30,9 @@ export default async function ChangeCodeActions(
         }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
 
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
     return {
-      success: false,
+      success: getResponse.status === "success",
       message: getResponse.message,
     };
   } catch {

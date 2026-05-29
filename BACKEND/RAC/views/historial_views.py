@@ -8,6 +8,7 @@ from ..models.historial_personal_models import EmployeeMovementHistory, Employee
 from ..models.personal_models import Employee,AsigTrabajo
 from ..serializers.historial_personal_serializers import MovimintoCargoSerializer,GestionStatusSerializer,GestionEgreso_PasivoSerializer,EmployeeCargoHistorySerializer, TipoMovimientoSerializer
 from drf_spectacular.utils import extend_schema
+from ..utils.data_formatters import extract_first_error
 
 
 
@@ -53,9 +54,7 @@ def cambiar_cargo(request, cargo_id):
                 "message": f"Error en la operación: {str(e)}",
                 "data": []
             }, status=status.HTTP_400_BAD_REQUEST)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
 
     return Response({
         "status": "Error",
@@ -102,9 +101,7 @@ def gestionar_estatus_puesto(request, cargo_id):
                 "message": f"Error al procesar el cambio de estatus: {str(e)}",
                 "data": []
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
 
     return Response({
         "status": "Error",
@@ -149,9 +146,7 @@ def gestion_egreso_pasivo(request, cedulaidentidad):
                 "message": f"Error al procesar el movimiento: {str(e)}",
                 "data": []
             }, status=status.HTTP_400_BAD_REQUEST)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
     return Response({
         "status": "Error",
         "message": clean_message,

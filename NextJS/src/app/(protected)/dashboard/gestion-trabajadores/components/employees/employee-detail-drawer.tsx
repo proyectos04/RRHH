@@ -100,10 +100,16 @@ export function EmployeeDetailDrawer({
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">
-                  Numero De Contrato
+                  Número De Contrato
                 </p>
                 <p className="font-semibold text-foreground">
-                  {employee.n_contrato || "N/A"}
+                  {employee.contrato?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER')?.n_contrato || "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Política</p>
+                <p className="font-semibold text-foreground">
+                  {employee.contrato?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER')?.politica?.tipo_politica || "N/A"}
                 </p>
               </div>
               <div>
@@ -248,9 +254,12 @@ export function EmployeeDetailDrawer({
                   Fecha de Ingreso al Organismo
                 </p>
                 <p className="font-semibold text-foreground">
-                  {new Date(employee.fechaingresoorganismo).toLocaleDateString(
-                    "es-ES",
-                  )}
+                  {(() => {
+                    const activo = employee.contrato?.find(c => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER');
+                    return activo?.fecha_ingreso
+                      ? new Date(activo.fecha_ingreso).toLocaleDateString("es-ES")
+                      : "N/A";
+                  })()}
                 </p>
               </div>
               <div>

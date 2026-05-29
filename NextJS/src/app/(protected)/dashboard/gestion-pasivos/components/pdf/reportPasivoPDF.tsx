@@ -11,19 +11,6 @@ import {
   View,
 } from "@react-pdf/renderer";
 import { formatInTimeZone } from "date-fns-tz";
-import { intervalToDuration } from "date-fns";
-
-const calcTotalAPN = (antecedentes: EmployeeData["antecedentes"]) => {
-  if (!antecedentes || antecedentes.length === 0) return null;
-  const totalMs = antecedentes.reduce((acc, ant) => {
-    const start = ant.fecha_ingreso ? new Date(ant.fecha_ingreso) : null;
-    const end = ant.fecha_egreso ? new Date(ant.fecha_egreso) : new Date();
-    if (!start) return acc;
-    return acc + (end.getTime() - start.getTime());
-  }, 0);
-  if (totalMs <= 0) return null;
-  return intervalToDuration({ start: new Date(0), end: new Date(totalMs) });
-};
 import { useSession } from "next-auth/react";
 
 // Crear estilos
@@ -315,7 +302,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Nivel Académico:</Text>
               <Text style={styles.infoValue}>
-                {employee.formacion_academica?.nivelAcademico?.nivelacademico ??
+                {employee.formacion_academica?.[0]?.nivelAcademico?.nivelacademico ??
                   "No especificado"}
               </Text>
             </View>
@@ -323,14 +310,14 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Institución:</Text>
               <Text style={styles.infoValue}>
-                {employee.formacion_academica?.institucion ?? "No especificado"}
+                {employee.formacion_academica?.[0]?.institucion?.nombre_institucion ?? "No especificado"}
               </Text>
             </View>
 
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Carrera:</Text>
               <Text style={styles.infoValue}>
-                {employee.formacion_academica?.carrera?.nombre_carrera ??
+                {employee.formacion_academica?.[0]?.carrera?.nombre_carrera ??
                   "No especificado"}
               </Text>
             </View>
@@ -338,7 +325,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mención:</Text>
               <Text style={styles.infoValue}>
-                {employee.formacion_academica?.mension?.nombre_mencion ??
+                {employee.formacion_academica?.[0]?.mension?.nombre_mencion ??
                   "No especificado"}
               </Text>
             </View>
@@ -389,18 +376,21 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Fecha de ingreso:</Text>
               <Text style={styles.infoValue}>
-                {formatInTimeZone(
-                  employee?.fechaingresoorganismo,
-                  "UTC",
-                  "dd/MM/yyyy",
-                ) ?? "N/A"}
+                {(() => {
+                  const activo = employee?.contrato?.find(
+                    (c) => c.estatus?.estatus === 'ACTIVO' || c.estatus?.estatus === 'POR VENCER'
+                  );
+                  return activo?.fecha_ingreso
+                    ? formatInTimeZone(activo.fecha_ingreso, "UTC", "dd/MM/yyyy")
+                    : "N/A";
+                })()}
               </Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Antecedentes:</Text>
               <Text style={styles.infoValue}>
-                {(calcTotalAPN(employee.antecedentes)
-                  ? `Total: ${calcTotalAPN(employee.antecedentes)!.years ?? 0} años, ${calcTotalAPN(employee.antecedentes)!.months ?? 0} meses, ${calcTotalAPN(employee.antecedentes)!.days ?? 0} días`
+                {(employee.total_apn
+                  ? `Total: ${employee.total_apn.years} años, ${employee.total_apn.months} meses, ${employee.total_apn.days} días`
                   : "Sin antecedentes")}
               </Text>
             </View>
@@ -413,7 +403,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Grupo Sanguíneo:</Text>
               <Text style={styles.infoValue}>
-                {employee?.perfil_salud?.grupoSanguineo?.grupoSanguineo ??
+                {employee?.perfil_salud?.grupoSanguineo?.GrupoSanguineo ??
                   "N/A"}
               </Text>
             </View>
@@ -455,7 +445,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Talla Camisa:</Text>
               <Text style={styles.infoValue}>
-                {employee?.perfil_fisico?.tallaCamisa?.talla ??
+                {employee?.perfil_fisico?.tallaCamisa?.valor ??
                   "No especificado"}
               </Text>
             </View>
@@ -463,7 +453,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Talla Pantalón:</Text>
               <Text style={styles.infoValue}>
-                {employee?.perfil_fisico?.tallaPantalon?.talla ??
+                {employee?.perfil_fisico?.tallaPantalon?.valor ??
                   "No especificado"}
               </Text>
             </View>
@@ -471,7 +461,7 @@ export function ReportPDFPasive({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Talla Zapatos:</Text>
               <Text style={styles.infoValue}>
-                {employee?.perfil_fisico?.tallaZapatos?.talla ??
+                {employee?.perfil_fisico?.tallaZapatos?.valor ??
                   "No especificado"}
               </Text>
             </View>

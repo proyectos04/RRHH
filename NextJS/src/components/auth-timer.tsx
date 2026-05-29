@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useCallback, useState, useRef } from "react";
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { logoutAction } from "#/actions/auth-actions";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export function AuthController() {
+  const router = useRouter();
   const { data: session } = useSession();
   const [showAlert, setShowAlert] = useState(false);
 
@@ -14,9 +17,10 @@ export function AuthController() {
   const TOTAL_TIME = 10 * 60 * 1000; // 5m
   const WARNING_TIME = 5 * 60 * 1000; // 5m antes
 
-  const handleLogout = useCallback(() => {
-    signOut({ callbackUrl: "/login" });
-  }, []);
+  const handleLogout = useCallback(async () => {
+    await logoutAction();
+    router.push("/login");
+  }, [router]);
 
   useEffect(() => {
     if (!session) return;

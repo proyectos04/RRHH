@@ -3,6 +3,7 @@
 import z from "zod";
 import { schemaAsignCode } from "../schema/schema-asign-code";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export async function AsignCode(values: z.infer<typeof schemaAsignCode>) {
@@ -18,27 +19,16 @@ export async function AsignCode(values: z.infer<typeof schemaAsignCode>) {
     const payload = {
       usuario_id: userId,
       employee: values.employee,
-      encargaduria: values.encargaduria,
     };
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}asignar_codigo/${values.code}/`,
+    const getResponse = await apiFetch<ApiResponse<never>>(
+      `asignar_codigo/${values.code}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...payload }),
+        body: JSON.stringify(payload),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
     return {
-      success: false,
+      success: getResponse.status === "success",
       message: getResponse.message,
     };
   } catch {

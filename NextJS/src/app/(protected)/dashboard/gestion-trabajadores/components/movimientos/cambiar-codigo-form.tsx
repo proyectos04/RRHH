@@ -11,7 +11,7 @@ import {
   getNomina,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import { schemaChangeCode } from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/cambiar-codigo/schema/schemaChangeCode";
-import { ApiResponse, EmployeeData } from "@/app/types/types";
+import { EmployeeData } from "@/app/types/types";
 import {
   Select,
   SelectContent,
@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleAlert, Eraser, Search } from "lucide-react";
+import { Eraser, Search } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -37,10 +37,12 @@ import {
   FormMessage,
 } from "../../../../../../components/ui/form";
 import { Input } from "../../../../../../components/ui/input";
-import { Label } from "../../../../../../components/ui/label";
 import ChangeCodeActions from "../../movimientos/cambiar-codigo/actions/actions-change-code";
 import Error from "../error/error";
 import Loading from "../loading/loading";
+import EmployeeSearchForm from "../employees/employee-search-form";
+import { EmployeeInfoBanner } from "@/shared/components/employee-info-banner";
+import { useEmployeeSearch } from "@/shared/hooks/useEmployeeSearch";
 export function ChangeCodeForm() {
   const [searchParams, setSearchParams] = useState<string>();
   const schemaSearch = z.object({
@@ -58,7 +60,6 @@ export function ChangeCodeForm() {
     useState<string>();
   const [selecteIdDirectionLine, setSelecteIdDirectionLine] =
     useState<string>();
-  const [employee, setEmployee] = useState<ApiResponse<EmployeeData>>();
   const [isPending, startTransition] = useTransition();
   const { data: directionGeneral, isLoading: isLoadingDirectionGeneral } =
     useSWR(
@@ -111,22 +112,11 @@ export function ChangeCodeForm() {
     },
     resolver: zodResolver(schemaSearch),
   });
-  const schemaSearchEmployee = z.object({
-    searchEmployeeForm: z.string(),
-  });
-  const handleSearch = async (values: z.infer<typeof schemaSearchEmployee>) => {
-    if (!values.searchEmployeeForm) return;
-    const response = await getEmployeeById(values.searchEmployeeForm);
-    if (response.data && response.data !== undefined) {
-      setEmployee(response);
-    }
-  };
-  const formSearch = useForm({
-    defaultValues: {
-      searchEmployeeForm: "",
-    },
-    resolver: zodResolver(schemaSearchEmployee),
-  });
+
+  const { employee, isLoading: isLoadingSearch, hasSearched, search } =
+    useEmployeeSearch<EmployeeData>({
+      searchFn: getEmployeeById,
+    });
   const onSubmit = (data: z.infer<typeof schemaChangeCode>) => {
     startTransition(async () => {
       const response = await ChangeCodeActions(data);
@@ -168,45 +158,15 @@ export function ChangeCodeForm() {
       ) : (
         <Card>
           <CardContent className="space-y-5">
-            <Form {...formSearch}>
-              <form
-                className="flex flex-row justify-between  gap-2"
-                onSubmit={formSearch.handleSubmit(handleSearch)}
-              >
-                <FormField
-                  name="searchEmployeeForm"
-                  control={formSearch.control}
-                  render={({ field }) => (
-                    <FormItem className="flex-1 ">
-                      <FormLabel>Buscar Trabajador</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="00000000"
-                          type="number"
-                          {...field}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button className="self-baseline-last cursor-pointer">
-                  <Search className="h-4 w-4" />
-                </Button>
-              </form>
-            </Form>
+            <EmployeeSearchForm onSearch={search} />
+
+            <EmployeeInfoBanner
+              employee={employee}
+              hasSearched={hasSearched}
+              isLoading={isLoadingSearch}
+            />
+
             {employee && (
-              <div className={` rounded-sm p-2 `}>
-                {!Array.isArray(employee.data) ? (
-                  <div className="flex flex-row gap-2  border-2 border-blue-400/45 bg-blue-200/40 p-2 rounded-sm">
-                    <p>Nombres: {employee.data.nombres}</p>
-                    <p>Cedula: {employee.data.cedulaidentidad}</p>
-                  </div>
-                ) : (
-                  <Error errorMessage="Trabajador No Posee Cargos" />
-                )}
-              </div>
-            )}
-            {employee && !Array.isArray(employee.data) && (
               <div className="space-y-5">
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSearch)}>
@@ -426,7 +386,7 @@ export function ChangeCodeForm() {
                 </Form>
               </div>
             )}
-            {employee && !Array.isArray(employee.data) && (
+            {employee && (
               <div>
                 <Form {...formChangeCode}>
                   <form
@@ -454,7 +414,7 @@ export function ChangeCodeForm() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {employee.data.asignaciones.map((codes, i) => (
+                              {employee.asignaciones.map((codes, i) => (
                                 <SelectItem key={i} value={`${codes.id}`}>
                                   {codes.codigo} -{" "}
                                   {codes.denominacioncargoespecifico.cargo}

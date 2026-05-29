@@ -23,7 +23,7 @@ export const schemaCodeEspecial = z.object({
   DireccionGeneral: z.number().default(0),
   DireccionLinea: z.number().default(0),
   Coordinacion: z.number().default(0),
-  tipo_comision: z.number().refine((v) => !(v < 1), {
+  tipo_procedencia: z.number().refine((v) => !(v < 1), {
     message: "Debe Seleccionar Un Valor",
   }),
 });

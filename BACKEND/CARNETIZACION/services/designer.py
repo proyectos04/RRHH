@@ -4,6 +4,8 @@ from reportlab.lib.units import cm
 from reportlab.lib.colors import HexColor, black, white
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase.pdfmetrics import stringWidth
+from pdf2image import convert_from_bytes
+from types import SimpleNamespace
 from PIL import Image
 import os
 import qrcode
@@ -161,7 +163,23 @@ class CarnetDesigner:
     def _dibujar_foto(self, c, foto_buffer, x, y, ancho, alto):
         if foto_buffer:
             try:
-                img = ImageReader(foto_buffer)
+                foto_buffer.seek(0)
+                pil_image = Image.open(foto_buffer)
+                target_ratio = ancho / alto
+                img_width, img_height = pil_image.size
+                img_ratio = img_width / img_height
+                if img_ratio > target_ratio:
+                    new_width = int(img_height * target_ratio)
+                    offset = (img_width - new_width) // 2
+                    pil_image = pil_image.crop((offset, 0, offset + new_width, img_height))
+                elif img_ratio < target_ratio:
+                    new_height = int(img_width / target_ratio)
+                    offset = (img_height - new_height) // 2
+                    pil_image = pil_image.crop((0, offset, img_width, offset + new_height))
+                cropped_buffer = BytesIO()
+                pil_image.save(cropped_buffer, format="PNG")
+                cropped_buffer.seek(0)
+                img = ImageReader(cropped_buffer)
                 c.drawImage(img, x, y, ancho, alto,
                             preserveAspectRatio=True, anchor="c")
                 return
@@ -218,10 +236,10 @@ class CarnetDesigner:
         line_spacing = 0.45 * cm
 
         self._colocar_texto_ajustado(c, personal.nombre_completo.upper(), center_x,
-                                     text_start_y, bold=True, max_ancho=max_text_width, tamano_inicial=8)
+                                     text_start_y, bold=True, max_ancho=max_text_width, tamano_inicial=7)
 
         self._colocar_texto_ajustado(c, f"C.I: {personal.cedula}", center_x,
-                                     text_start_y - line_spacing, bold=False,
+                                     text_start_y - 1 * line_spacing, bold=False,
                                      max_ancho=max_text_width, tamano_inicial=7)
 
         codigo_text = f"Código: {personal.codigo}" if getattr(personal, 'codigo', None) else ""
@@ -250,8 +268,7 @@ class CarnetDesigner:
         return pdf_path, pdf_buffer
 
     def generar_vista_previa(self, personal, foto_buffer=None, datos_editados=None):
-        from pdf2image import convert_from_bytes
-        from types import SimpleNamespace
+       
 
         base_nombre = getattr(personal, "nombre_completo", "")
         base_cedula = getattr(personal, "cedula", "")
@@ -287,7 +304,7 @@ class CarnetDesigner:
         try:
             kwargs = {"dpi": 150, "fmt": "png"}
             poppler_path = getattr(settings, "POPPLER_PATH", None)
-            if poppler_path:
+            if poppler_path and os.path.exists(poppler_path):
                 kwargs["poppler_path"] = poppler_path
             images = convert_from_bytes(pdf_buffer, **kwargs)
             if images:

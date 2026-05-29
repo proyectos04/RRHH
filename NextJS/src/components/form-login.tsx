@@ -24,7 +24,7 @@ export default function FormRegister() {
   const form = useForm<z.infer<typeof signInSchema>>({
     resolver: zodResolver(signInSchema),
     defaultValues: {
-      identification: "",
+      email: "",
       password: "",
     },
   });
@@ -46,14 +46,14 @@ export default function FormRegister() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
-              name="identification"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cedula:</FormLabel>
+                  <FormLabel>Correo Electrónico:</FormLabel>
                   <FormControl>
                     <Input
-                      type={"number"}
-                      placeholder="00000000"
+                      type="email"
+                      placeholder="correo@conatel.gob.ve"
                       {...field}
                       className={
                         "transition-property: all transition-duration: 300ms hover:bg-slate-100"
@@ -61,7 +61,7 @@ export default function FormRegister() {
                     />
                   </FormControl>
                   <FormDescription>
-                    Introduce tu número de cédula o identificación.
+                    Introduce tu correo electrónico institucional.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -72,7 +72,7 @@ export default function FormRegister() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password:</FormLabel>
+                  <FormLabel>Contraseña:</FormLabel>
                   <FormControl>
                     <Input
                       type={"password"}
@@ -90,7 +90,7 @@ export default function FormRegister() {
             />
             {error && <FormMessage>{error}</FormMessage>}
             <Button type="submit" disabled={isPending} className="w-full">
-              Submit
+              Iniciar Sesión
             </Button>
           </form>
         </Form>

@@ -186,13 +186,11 @@ export function DetailInfoFamily({ family }: Props) {
                   </div>
                   <div>Institución:</div>
                   <div>
-                    {family.formacion_academica_familiar?.institucion ?? "N/A"}
+                    {family.formacion_academica_familiar?.institucion
+                      ?.nombre_institucion ?? "N/A"}
                   </div>
 
-                  <div>Capacitación</div>
-                  <div>
-                    {family.formacion_academica_familiar?.capacitacion ?? "N/A"}
-                  </div>
+                  
                 </div>
               </CardContent>
             </Card>
@@ -219,19 +217,19 @@ export function DetailInfoFamily({ family }: Props) {
                 <div className="grid grid-cols-2 place-content-center">
                   <div>Talla De Camisa:</div>
                   <div>
-                    {family.perfil_fisico_familiar?.tallaCamisa?.talla ?? "N/A"}
+                    {family.perfil_fisico_familiar?.tallaCamisa?.valor ?? "N/A"}
                   </div>
                   <div>Talla de Pantalon:</div>
                   <div>
                     <div>
-                      {family.perfil_fisico_familiar?.tallaPantalon?.talla ??
+                      {family.perfil_fisico_familiar?.tallaPantalon?.valor ??
                         "N/A"}
                     </div>
                   </div>
                   <div>Talla De Calzado:</div>
                   <div>
                     <div>
-                      {family.perfil_fisico_familiar?.tallaZapatos?.talla ??
+                      {family.perfil_fisico_familiar?.tallaZapatos?.valor ??
                         "N/A"}
                     </div>
                   </div>

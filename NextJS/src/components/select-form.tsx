@@ -31,6 +31,9 @@ interface Props<T extends FieldValues, D> {
   labelKey: keyof D;
   classNameItem?: string;
   clasNameSelect?: string;
+  onCustomChange?: (value: string) => void;
+  selectedValue?: string;
+  children?: React.ReactNode;
 }
 export function SelectForm<T extends FieldValues, D>({
   form,
@@ -45,6 +48,9 @@ export function SelectForm<T extends FieldValues, D>({
   labelKey,
   classNameItem,
   clasNameSelect,
+  onCustomChange,
+  selectedValue,
+  children,
 }: Props<T, D>) {
   return (
     <>
@@ -55,7 +61,12 @@ export function SelectForm<T extends FieldValues, D>({
           <FormItem className={cn(classNameItem)}>
             <FormLabel>{Formlabel}</FormLabel>
             <FormControl>
-              <Select onValueChange={(value) => field.onChange(value)}>
+              <Select
+                onValueChange={(value) => {
+                  onCustomChange ? onCustomChange(value) : field.onChange(value);
+                }}
+                value={selectedValue ?? field.value?.toString() ?? ""}
+              >
                 <SelectTrigger
                   className={`${cn(clasNameSelect)} w-full truncate`}
                 >
@@ -72,6 +83,7 @@ export function SelectForm<T extends FieldValues, D>({
                         {String(item[labelKey])}
                       </SelectItem>
                     ))}
+                    {children}
                   </SelectGroup>
                 </SelectContent>
               </Select>

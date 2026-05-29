@@ -7,22 +7,21 @@ from io import BytesIO
 
 from django.conf import settings
 from django.db.models import Q
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-
 from RAC.models import Employee, AsigTrabajo, Denominacioncargo, DireccionGeneral
 from .models import CarnetEmitido, MotivosEmision, CarnetTemplate
-from .serializers import (
-    EmployeeCarnetSerializer,
-    DenominacioncargoSerializer,
+from .serializers import CarnetTemplateSerializer
+
+from RAC.serializers.catalogs_serializers import (
+    denominacionCargoSerializer as DenominacioncargoSerializer,
     DireccionGeneralSerializer,
-    CarnetTemplateSerializer,
 )
-from .services.helpers import employee_to_carnet_data, get_employee_carnet_info
+from .services.helpers import  *
 from .services.designer import designer as carnet_designer
 from .services.generator import generator as carnet_generator
 
@@ -66,7 +65,6 @@ def _upload_to_nestjs(file_obj, cedula):
 # ─────────────────────────────────────────────
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_buscar_personal(request):
     query = request.GET.get("q", "").strip()
     if not query:
@@ -90,7 +88,6 @@ def api_buscar_personal(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_listar_cargos(request):
     cargos = Denominacioncargo.objects.all().order_by('cargo')
     serializer = DenominacioncargoSerializer(cargos, many=True)
@@ -98,7 +95,6 @@ def api_listar_cargos(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_listar_departamentos(request):
     deptos = DireccionGeneral.objects.all().order_by('direccion_general')
     serializer = DireccionGeneralSerializer(deptos, many=True)
@@ -106,14 +102,12 @@ def api_listar_departamentos(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_listar_motivos(request):
     motivos = MotivosEmision.objects.all().order_by('nombre')
     return Response([{"id": m.id, "nombre": m.nombre} for m in motivos])
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_actualizar_vista_previa(request, cedula):
     try:
         employee = get_object_or_404(Employee, cedulaidentidad=cedula)
@@ -132,7 +126,6 @@ def api_actualizar_vista_previa(request, cedula):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_subir_foto(request, cedula):
     try:
         employee = get_object_or_404(Employee, cedulaidentidad=cedula)
@@ -169,7 +162,6 @@ def api_subir_foto(request, cedula):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_registrar_solicitud(request, cedula):
     try:
         employee = get_object_or_404(Employee, cedulaidentidad=cedula)
@@ -200,7 +192,6 @@ def api_registrar_solicitud(request, cedula):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_generar_carnet(request, cedula):
     try:
         employee = get_object_or_404(Employee, cedulaidentidad=cedula)
@@ -306,7 +297,6 @@ def api_validar_carnet(request, carnet_id):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_estadisticas(request):
     from django.utils import timezone
 
@@ -348,7 +338,6 @@ def api_estadisticas(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
 def api_listar_plantillas(request):
     plantillas = CarnetTemplate.objects.all().order_by('-activo', '-creado')
     serializer = CarnetTemplateSerializer(plantillas, many=True)
@@ -356,7 +345,6 @@ def api_listar_plantillas(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_crear_plantilla(request):
     serializer = CarnetTemplateSerializer(data=request.data)
     if serializer.is_valid():
@@ -366,7 +354,6 @@ def api_crear_plantilla(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
 def api_activar_plantilla(request, plantilla_id):
     plantilla = get_object_or_404(CarnetTemplate, id=plantilla_id)
     CarnetTemplate.objects.filter(activo=True).exclude(id=plantilla_id).update(activo=False)

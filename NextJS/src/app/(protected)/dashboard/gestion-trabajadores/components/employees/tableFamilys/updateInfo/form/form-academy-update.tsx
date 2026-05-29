@@ -4,11 +4,13 @@ import {
   TypeSchemaUpdateAcademy,
 } from "../schema/schemaAcademyUpdate";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Form } from "@/components/ui/form";
-import InputForm from "@/components/input-form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { SelectItem } from "@/components/ui/select";
 import {
   getAcademyLevel,
   getCarrera,
+  getInstituciones,
   getMencion,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import useSWR from "swr";
@@ -31,9 +33,12 @@ export default function UpdateFormAcademy({ id, mutate }: Props) {
       formacion_academica_familiar: {
         capacitacion: undefined,
         carrera_id: undefined,
-        institucion: undefined,
-        nivel_Academico_id: undefined,
+        nueva_carrera_nombre: undefined,
         mencion_id: undefined,
+        nueva_mencion_nombre: undefined,
+        institucion_id: undefined,
+        nueva_institucion_nombre: undefined,
+        nivel_Academico_id: undefined,
       },
     },
     resolver: zodResolver(schemaUpdateAcademy),
@@ -46,15 +51,28 @@ export default function UpdateFormAcademy({ id, mutate }: Props) {
     "carrera",
     async () => await getCarrera(),
   );
+  const { data: instituciones } = useSWR("instituciones", getInstituciones);
 
   const carreraId = useWatch({
     control: form.control,
     name: "formacion_academica_familiar.carrera_id",
   });
+  const hasCarrera = carreraId != null && Number(carreraId) > 0;
+
   const { data: menction, isLoading: isLoadingMenction } = useSWR(
-    carreraId ? ["academy", carreraId] : null,
-    async () => await getMencion(carreraId?.toString() ?? ""),
+    carreraId ? ["mencion", carreraId] : null,
+    async () => await getMencion(String(carreraId)),
   );
+
+  const watchedCarreraId = useWatch({ control: form.control, name: "formacion_academica_familiar.carrera_id" });
+  const isOtherCarrera = watchedCarreraId === -1;
+
+  const watchedMencionId = useWatch({ control: form.control, name: "formacion_academica_familiar.mencion_id" });
+  const isOtherMencion = watchedMencionId === -1;
+
+  const watchedInstitucionId = useWatch({ control: form.control, name: "formacion_academica_familiar.institucion_id" });
+  const isOtherInstitucion = watchedInstitucionId === -1;
+
   const searchParams = useSearchStore((state) => state.searchParams);
 
   const onSubmit = (values: TypeSchemaUpdateAcademy) => {
@@ -88,12 +106,43 @@ export default function UpdateFormAcademy({ id, mutate }: Props) {
                 placeholder="Selecciona un nivel academico"
                 valueKey="id"
               />
-              <InputForm
+              <SelectForm
+                Formlabel={`Institución ${hasCarrera ? "*" : "(Opcional)"}`}
+                SelectLabelItem="Seleccione una institución"
                 form={form}
-                label="Institución"
-                nameInput="formacion_academica_familiar.institucion"
-                type="text"
-              />
+                isLoading={false}
+                nameSalect="formacion_academica_familiar.institucion_id"
+                options={instituciones?.data ?? []}
+                placeholder="Seleccione una institución"
+                valueKey="id"
+                labelKey="nombre_institucion"
+                selectedValue={watchedInstitucionId === -1 ? "-1" : String(watchedInstitucionId ?? "")}
+                onCustomChange={(v) => {
+                  if (v === "-1") {
+                    form.setValue("formacion_academica_familiar.institucion_id", -1 as never);
+                  } else {
+                    form.setValue("formacion_academica_familiar.institucion_id", Number(v) as never);
+                    form.setValue("formacion_academica_familiar.nueva_institucion_nombre", "" as never);
+                  }
+                }}
+              >
+                <SelectItem value="-1">Otra</SelectItem>
+              </SelectForm>
+              {isOtherInstitucion && (
+                <FormField
+                  control={form.control}
+                  name="formacion_academica_familiar.nueva_institucion_nombre"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nueva Institución</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nueva institución..." {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <SelectForm
                 Formlabel="Carrera"
                 SelectLabelItem="Seleccione una carrera"
@@ -103,8 +152,35 @@ export default function UpdateFormAcademy({ id, mutate }: Props) {
                 options={carrera?.data ?? []}
                 placeholder="Seleccione una carrera"
                 valueKey="id"
-                labelKey={"nombre_carrera"}
-              />
+                labelKey="nombre_carrera"
+                selectedValue={isOtherCarrera ? "-1" : String(watchedCarreraId ?? "")}
+                onCustomChange={(v) => {
+                  if (v === "-1") {
+                    form.setValue("formacion_academica_familiar.carrera_id", -1 as never);
+                    form.setValue("formacion_academica_familiar.mencion_id", undefined as never);
+                  } else {
+                    form.setValue("formacion_academica_familiar.carrera_id", Number(v) as never);
+                    form.setValue("formacion_academica_familiar.nueva_carrera_nombre", "" as never);
+                  }
+                }}
+              >
+                <SelectItem value="-1">Otra</SelectItem>
+              </SelectForm>
+              {isOtherCarrera && (
+                <FormField
+                  control={form.control}
+                  name="formacion_academica_familiar.nueva_carrera_nombre"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nueva Carrera</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nueva carrera..." {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <SelectForm
                 Formlabel="Seleccione una mención"
                 SelectLabelItem="Seleccione una mención"
@@ -114,17 +190,48 @@ export default function UpdateFormAcademy({ id, mutate }: Props) {
                 options={menction?.data ?? []}
                 placeholder="Seleccione una mención"
                 valueKey="id"
-                labelKey={"nombre_mencion"}
-              />
-              <InputForm
-                form={form}
-                label="Capacitación"
-                nameInput="formacion_academica_familiar.capacitacion"
-                type="text"
-                className="col-span-2"
+                labelKey="nombre_mencion"
+                selectedValue={isOtherMencion ? "-1" : String(watchedMencionId ?? "")}
+                onCustomChange={(v) => {
+                  if (v === "-1") {
+                    form.setValue("formacion_academica_familiar.mencion_id", -1 as never);
+                  } else {
+                    form.setValue("formacion_academica_familiar.mencion_id", Number(v) as never);
+                    form.setValue("formacion_academica_familiar.nueva_mencion_nombre", "" as never);
+                  }
+                }}
+              >
+                {hasCarrera && <SelectItem value="-1">Otra</SelectItem>}
+              </SelectForm>
+              {isOtherMencion && (
+                <FormField
+                  control={form.control}
+                  name="formacion_academica_familiar.nueva_mencion_nombre"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nueva Mención</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nueva mención..." {...field} value={field.value ?? ""} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              <FormField
+                control={form.control}
+                name="formacion_academica_familiar.capacitacion"
+                render={({ field }) => (
+                  <FormItem className="col-span-2">
+                    <FormLabel>Capacitación (Opcional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Capacitado En..." {...field} value={field.value ?? ""} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
               <Button className="col-span-2 cursor-pointer">
-                {" "}
                 Guardar Información
               </Button>
             </div>

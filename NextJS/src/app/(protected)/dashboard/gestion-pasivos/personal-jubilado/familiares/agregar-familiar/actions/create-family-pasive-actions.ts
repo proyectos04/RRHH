@@ -3,6 +3,7 @@
 import z from "zod";
 import { schemaFamilyEmployeeOne } from "../schema/schemaCreateFamily";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export default async function createFamilyPasiveActions(
@@ -24,33 +25,29 @@ export default async function createFamilyPasiveActions(
       ...familyData
     } = values;
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}Employeefamily/${id}/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...familyData, usuario_id: session.user.id }),
-      },
-    );
     interface FamilyCreateResponse {
       id: number;
       cedulaFamiliar: string;
       nombre_completo: string;
       parentesco: string;
     }
-    const getResponse: ApiResponse<FamilyCreateResponse> = await response.json();
-    if (response.ok) {
+    const data = await apiFetch<ApiResponse<FamilyCreateResponse>>(
+      `Employeefamily/${id}/`,
+      {
+        method: "POST",
+        body: JSON.stringify({ ...familyData, usuario_id: session.user.id }),
+      },
+    );
+    if (data.status === "success") {
       return {
         success: true,
-        message: getResponse.message,
-        data: getResponse.data,
+        message: data.message,
+        data: data.data,
       };
     }
     return {
       success: false,
-      message: getResponse.message,
+      message: data.message,
     };
   } catch {
     return {

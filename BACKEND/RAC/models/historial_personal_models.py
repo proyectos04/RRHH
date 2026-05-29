@@ -106,3 +106,40 @@ class CargoEgresado(models.Model):
 
     class Meta:
         db_table = 'CargoEgresado'
+
+
+class PrestamoCargo(models.Model):
+    empleado_encargado = models.ForeignKey(
+        Employee,
+        models.PROTECT,
+        related_name='encargadurias_asignadas',
+        to_field='cedulaidentidad',
+        db_column='empleadoEncargadoCedula'
+    )
+    cargo_encargado = models.ForeignKey(
+        'AsigTrabajo',
+        models.PROTECT,
+        related_name='prestamos',
+        db_column='cargoEncargadoId'
+    )
+    motivo = models.ForeignKey(
+        Tipo_movimiento,
+        models.PROTECT,
+        db_column='motivoId',
+        limit_choices_to={'categoriaId__categoria': 'ENCARGADURIA'}
+    )
+    estatus = models.ForeignKey(
+        Estatus,
+        models.PROTECT,
+        db_column='estatusId'
+    )
+    fecha_inicio = models.DateField(db_column='fechaInicio')
+    fecha_fin = models.DateField(db_column='fechaFin')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, db_column='fechaCreacion')
+    ejecutado_por = models.ForeignKey(cuenta, models.PROTECT, db_column='ejecutadoPorId')
+
+    class Meta:
+        managed = True
+        db_table = 'PrestamoCargo'
+        ordering = ['fecha_inicio']
+        app_label = 'RAC'

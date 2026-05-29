@@ -2,7 +2,9 @@
 import { z } from "zod";
 import { schemaCodeEspecial } from "../schema/schemaCodeEspecial";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
+
 export async function AsignSpecialCode(
   values: z.infer<typeof schemaCodeEspecial>,
 ) {
@@ -16,26 +18,16 @@ export async function AsignSpecialCode(
     }
 
     const userId = Number.parseInt(session.user.id);
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}asignacion_CodigoEspecia/`,
+    const getResponse = await apiFetch<ApiResponse<never>>(
+      "asignacion_CodigoEspecia/",
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...values, usuario_id: userId }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
 
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
     return {
-      success: false,
+      success: getResponse.status === "success",
       message: getResponse.message,
     };
   } catch {
