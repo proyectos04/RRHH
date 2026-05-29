@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useSWR from "swr";
 import { z } from "zod";
-import { Download, Search, Eraser } from "lucide-react";
+import { Download, Search, Eraser, Eye } from "lucide-react";
 import { toast } from "sonner";
 
 import PageLayout from "@/components/layout/page-layout";
@@ -28,8 +28,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  SheetContentUI,
+  SheetHeaderUI,
+  SheetTitleUI,
+  SheetTriggerUI,
+  SheetUI,
+} from "@/components/ui/SheetUI";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
 import { consultarCensoEmpleado, exportarCensoExcel, type CensoEmpleadoItem } from "../api/getInfoAutogestion";
 import Loading from "../../gestion-trabajadores/components/loading/loading";
@@ -37,6 +45,63 @@ import Loading from "../../gestion-trabajadores/components/loading/loading";
 const schemaSearch = z.object({
   cedula: z.string().optional(),
 });
+
+function DetalleCenso({ empleado }: { empleado: CensoEmpleadoItem }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="font-medium">Cedula:</div>
+        <div>{empleado.cedula}</div>
+        <div className="font-medium">Nombres:</div>
+        <div>{empleado.nombres}</div>
+        <div className="font-medium">Apellidos:</div>
+        <div>{empleado.apellidos}</div>
+        <div className="font-medium">F. Nacimiento:</div>
+        <div>{empleado.fecha_nacimiento || "N/A"}</div>
+        <div className="font-medium">Carnet Patria:</div>
+        <div>{empleado.carnet_patria || "N/A"}</div>
+        <div className="font-medium">APN:</div>
+        <div>
+          {empleado.total_apn
+            ? `${empleado.total_apn.years}a ${empleado.total_apn.months}m ${empleado.total_apn.days}d`
+            : "N/A"}
+        </div>
+        <div className="font-medium">F. Ingreso:</div>
+        <div>{empleado.fecha_ingreso_organismo || "N/A"}</div>
+      </div>
+
+      {empleado.datos_vivienda && (
+        <>
+          <Separator />
+          <h4 className="font-semibold text-sm">Datos de Vivienda</h4>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className="font-medium">Direccion:</div>
+            <div>{empleado.datos_vivienda.direccion_exacta || "N/A"}</div>
+            <div className="font-medium">Codigo Postal:</div>
+            <div>{empleado.datos_vivienda.codigo_postal || "N/A"}</div>
+          </div>
+        </>
+      )}
+
+      <Separator />
+      <h4 className="font-semibold text-sm">
+        Respuestas ({empleado.preguntas?.length || 0})
+      </h4>
+      <ScrollArea className="h-64 rounded-md border p-2">
+        <div className="space-y-2">
+          {empleado.preguntas?.map((p) => (
+            <Card key={p.id} className="p-2">
+              <p className="text-xs font-medium text-gray-700">{p.pregunta}</p>
+              <Badge variant="secondary" className="mt-1 text-xs">
+                {p.opcion?.opcion || p.respuesta || "—"}
+              </Badge>
+            </Card>
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+}
 
 export default function ConsultarCensoPage() {
   const [searchCedula, setSearchCedula] = useState<string>("");
@@ -139,7 +204,7 @@ export default function ConsultarCensoPage() {
                 <TableHead>Apellidos</TableHead>
                 <TableHead>Carnet Patria</TableHead>
                 <TableHead className="w-[80px]">APN</TableHead>
-                <TableHead>Preguntas</TableHead>
+                <TableHead className="w-[80px]">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -160,13 +225,23 @@ export default function ConsultarCensoPage() {
                       {emp.total_apn ? `${emp.total_apn.years}a ${emp.total_apn.months}m` : "N/A"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {emp.preguntas?.map((p) => (
-                          <Badge key={p.id} variant="outline" className="text-xs">
-                            {p.pregunta.substring(0, 30)}: {p.opcion?.opcion || p.respuesta || "—"}
-                          </Badge>
-                        ))}
-                      </div>
+                      <SheetUI>
+                        <SheetTriggerUI asChild>
+                          <Button variant="outline" size="sm" className="cursor-pointer">
+                            <Eye className="h-4 w-4 mr-1" /> Ver
+                          </Button>
+                        </SheetTriggerUI>
+                        <SheetContentUI>
+                          <SheetHeaderUI>
+                            <SheetTitleUI>
+                              Detalle del Censo — {emp.nombres} {emp.apellidos}
+                            </SheetTitleUI>
+                          </SheetHeaderUI>
+                          <ScrollArea className="h-[80vh] pr-4">
+                            <DetalleCenso empleado={emp} />
+                          </ScrollArea>
+                        </SheetContentUI>
+                      </SheetUI>
                     </TableCell>
                   </TableRow>
                 ))
