@@ -321,7 +321,16 @@ export default function DetailInfoEmployee({ employee }: Props) {
                         mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                         idEmployee={employee.id.toString()}
                         defaultValues={{
-                          formacion_academica: employee.formacion_academica,
+                          formacion_academica:
+                            employee.formacion_academica?.length
+                              ? employee.formacion_academica.map((fa) => ({
+                                  nivel_Academico_id:
+                                    fa.nivelAcademico?.id ?? 0,
+                                  carrera_id: fa.carrera?.id ?? 0,
+                                  mencion_id: fa.mencion?.id ?? 0,
+                                  institucion_id: fa.institucion?.id ?? 0,
+                                }))
+                              : [],
                         }}
                       />
                     </DialogContent>
@@ -342,7 +351,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                   </div>
                   <div>Mención:</div>
                   <div>
-                    {employee.formacion_academica?.[0]?.mension?.nombre_mencion ??
+                    {employee.formacion_academica?.[0]?.mencion?.nombre_mencion ??
                       "N/A"}
                   </div>
                   <div>Institución:</div>

@@ -22,7 +22,7 @@ export type AcademyLevelEmployeeData = {
     id: number;
     nombre_carrera: string;
   } | null;
-  mension: {
+  mencion: {
     id: number;
     nombre_mencion: string;
     carrera: {

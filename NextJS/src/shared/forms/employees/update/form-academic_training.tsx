@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Cross, Trash, X } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import useSWR from "swr";
 import Loading from "@/app/(protected)/dashboard/gestion-trabajadores/components/loading/loading";
@@ -70,6 +70,17 @@ export default function FormUpdateAcademyLevel({
     resolver: zodResolver(schemaAcademyUpdate),
     defaultValues,
   });
+
+  useEffect(() => {
+    const firstNivel = defaultValues.formacion_academica?.[0]?.nivel_Academico_id;
+    const firstCarrera = defaultValues.formacion_academica?.[0]?.carrera_id;
+    if (firstNivel && firstNivel > 0) {
+      setNivelAcademicoId(firstNivel);
+    }
+    if (firstCarrera && firstCarrera > 0) {
+      setMencionId(String(firstCarrera));
+    }
+  }, [defaultValues]);
 
   const { fields, append, remove } = useFieldArray({
     name: "formacion_academica",
@@ -476,15 +487,18 @@ export default function FormUpdateAcademyLevel({
                             />
                           </div>
                         </div>
-                        <Button
-                          type="button"
-                          variant={"destructive"}
-                          size="icon"
-                          className={`${index === 0 ? "invisible" : ""} cursor-pointer mt-6`}
-                          onClick={() => remove(index)}
-                        >
-                          <X />
-                        </Button>
+                        <div className="flex flex-col items-center gap-2">
+                          <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 invisible">X</span>
+                          <Button
+                            type="button"
+                            variant={"destructive"}
+                            size="icon"
+                            className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                            onClick={() => remove(index)}
+                          >
+                            <X />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}

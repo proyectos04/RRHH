@@ -183,7 +183,7 @@ export function DetailInfoFamily({ family }: Props) {
                   </div>
                   <div>Mención:</div>
                   <div>
-                    {family.formacion_academica_familiar?.mension
+                    {family.formacion_academica_familiar?.mencion
                       ?.nombre_mencion ?? "N/A"}
                   </div>
                   <div>Institución:</div>

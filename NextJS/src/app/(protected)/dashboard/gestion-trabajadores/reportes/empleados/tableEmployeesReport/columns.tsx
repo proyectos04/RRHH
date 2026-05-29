@@ -336,7 +336,7 @@ export const columsReport: ColumnDef<EmployeeData>[] = [
                             </div>
                             <div>Mención:</div>
                             <div>
-                              {employee.formacion_academica?.[0]?.mension
+                              {employee.formacion_academica?.[0]?.mencion
                                 ?.nombre_mencion ?? "N/A"}
                             </div>
                             <div>Institucion:</div>

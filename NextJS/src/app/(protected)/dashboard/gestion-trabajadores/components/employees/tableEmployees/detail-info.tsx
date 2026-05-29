@@ -408,7 +408,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                                   nivel_Academico_id:
                                     fa.nivelAcademico?.id ?? 0,
                                   carrera_id: fa.carrera?.id ?? 0,
-                                  mencion_id: fa.mension?.id ?? 0,
+                                  mencion_id: fa.mencion?.id ?? 0,
                                   institucion_id: fa.institucion?.id ?? 0,
                                 }))
                               : [],
@@ -442,7 +442,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                             {v.carrera?.nombre_carrera ?? "N/A"}
                           </TableCell>
                           <TableCell>
-                            {v.mension?.nombre_mencion ?? "N/A"}
+                            {v.mencion?.nombre_mencion ?? "N/A"}
                           </TableCell>
                           <TableCell className="truncate max-w-[200px]">
                             {v.institucion?.nombre_institucion ?? "N/A"}

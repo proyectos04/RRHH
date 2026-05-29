@@ -325,7 +325,7 @@ export function ReportPDFEmployee({
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Mención:</Text>
               <Text style={styles.infoValue}>
-                {employee.formacion_academica?.[0]?.mension?.nombre_mencion ??
+                {employee.formacion_academica?.[0]?.mencion?.nombre_mencion ??
                   "No especificado"}
               </Text>
             </View>

@@ -224,7 +224,7 @@ export default function FormUpdateSupplementaryTraining({
                   return (
                     <div
                       key={field.id}
-                      className="flex flex-row gap-5 items-start w-full"
+                      className="flex flex-wrap gap-3 items-start border-b pb-3 mb-3"
                     >
                       <FormField
                         control={form.control}
@@ -565,14 +565,18 @@ export default function FormUpdateSupplementaryTraining({
                           </FormItem>
                         )}
                       />
-                      <Button
-                        type="button"
-                        variant={"destructive"}
-                        className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
-                        onClick={() => remove(index)}
-                      >
-                        <X />
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-sm font-medium leading-none invisible">X</span>
+                        <Button
+                          type="button"
+                          variant={"destructive"}
+                          size="icon"
+                          className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                          onClick={() => remove(index)}
+                        >
+                          <X />
                       </Button>
+                      </div>
                     </div>
                   );
                 })}

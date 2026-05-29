@@ -78,10 +78,6 @@ export default function FormSupplementaryTraining({
     async () => await getTiposProcedencia(),
   );
 
-  const procedenciasExternas = tiposProcedencia?.data?.filter((t) =>
-    t.tipo_procedencia.toLowerCase().includes("externa"),
-  );
-
   const form = useForm({
     resolver: zodResolver(schemaSupplementaryTraining),
     defaultValues,
@@ -186,7 +182,7 @@ export default function FormSupplementaryTraining({
                 return (
                 <div
                   key={field.id}
-                  className="flex flex-row gap-5 items-start w-full"
+                  className="flex flex-wrap gap-3 items-start border-b pb-3 mb-3"
                 >
                     <FormField
                       control={form.control}
@@ -452,7 +448,7 @@ export default function FormSupplementaryTraining({
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {procedenciasExternas?.map((p) => (
+                              {tiposProcedencia?.data?.map((p) => (
                                 <SelectItem key={p.id} value={p.id.toString()}>
                                   {p.tipo_procedencia}
                                 </SelectItem>
@@ -479,14 +475,18 @@ export default function FormSupplementaryTraining({
                         </FormItem>
                       )}
                     />
-                    <Button
-                      type="button"
-                      variant={"destructive"}
-                      className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
-                      onClick={() => remove(index)}
-                    >
-                      <X />
-                    </Button>
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-sm font-medium leading-none invisible">X</span>
+                      <Button
+                        type="button"
+                        variant={"destructive"}
+                        size="icon"
+                        className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                        onClick={() => remove(index)}
+                      >
+                        <X />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

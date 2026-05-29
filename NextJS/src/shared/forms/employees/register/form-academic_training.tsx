@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Cross, Trash, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Badge } from "@/components/ui/badge";
 
@@ -60,6 +60,13 @@ export default function FormAcademyLevel({
     defaultValues,
     mode: "onChange",
   });
+
+  useEffect(() => {
+    const firstNivel = defaultValues.formacion_academica?.[0]?.nivel_Academico_id;
+    if (firstNivel && firstNivel > 0) {
+      setNivelAcademicoId(firstNivel);
+    }
+  }, [defaultValues]);
 
   const { fields, append, remove } = useFieldArray({
     name: "formacion_academica",
@@ -457,15 +464,18 @@ export default function FormAcademyLevel({
                         />
                       </div>
                     </div>
-                    <Button
-                      type="button"
-                      variant={"destructive"}
-                      size="icon"
-                      className={`${index === 0 ? "invisible" : ""} cursor-pointer mt-6`}
-                      onClick={() => remove(index)}
-                    >
-                      <X />
-                    </Button>
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 invisible">X</span>
+                      <Button
+                        type="button"
+                        variant={"destructive"}
+                        size="icon"
+                        className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                        onClick={() => remove(index)}
+                      >
+                        <X />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
