@@ -30,6 +30,7 @@ declare module "next-auth" {
         id: string;
         nombre: string;
       };
+      debeCambiarPassword: boolean;
     } & DefaultSession["user"];
   }
   interface User {
@@ -59,6 +60,7 @@ declare module "next-auth" {
       id: string;
       nombre: string;
     };
+    debeCambiarPassword?: boolean;
   }
 }
 

@@ -43,12 +43,15 @@ interface DocsResponse {
 interface Props {
   family: Family;
 }
-const fetcher = (url: string) => fetch(url).then(r => r.json());
 export function DetailInfoFamily({ family }: Props) {
   const { mutate } = useSWRConfig();
   const { data: docsData } = useSWR<DocsResponse>(
-    `${process.env.NEXT_PUBLIC_DJANGO_API_URL}Employeefamily/${family.id}/documentos/list/`,
-    fetcher,
+    family.id ? `Employeefamily/${family.id}/documentos/list/` : null,
+    async (url: string) => {
+      const { apiFetchGet } = await import("@/lib/utils");
+      const res = await apiFetchGet<any>(url);
+      return res;
+    },
   );
   const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (
@@ -181,18 +184,16 @@ export function DetailInfoFamily({ family }: Props) {
                   </div>
                   <div>Mención:</div>
                   <div>
-                    {family.formacion_academica_familiar?.mension
+                    {family.formacion_academica_familiar?.mencion
                       ?.nombre_mencion ?? "N/A"}
                   </div>
                   <div>Institución:</div>
                   <div>
-                    {family.formacion_academica_familiar?.institucion ?? "N/A"}
+                    {family.formacion_academica_familiar?.institucion
+                      ?.nombre_institucion ?? "N/A"}
                   </div>
 
-                  <div>Capacitación</div>
-                  <div>
-                    {family.formacion_academica_familiar?.capacitacion ?? "N/A"}
-                  </div>
+                  
                 </div>
               </CardContent>
             </Card>
@@ -219,19 +220,19 @@ export function DetailInfoFamily({ family }: Props) {
                 <div className="grid grid-cols-2 place-content-center">
                   <div>Talla De Camisa:</div>
                   <div>
-                    {family.perfil_fisico_familiar?.tallaCamisa?.talla ?? "N/A"}
+                    {family.perfil_fisico_familiar?.tallaCamisa?.valor ?? "N/A"}
                   </div>
                   <div>Talla de Pantalon:</div>
                   <div>
                     <div>
-                      {family.perfil_fisico_familiar?.tallaPantalon?.talla ??
+                      {family.perfil_fisico_familiar?.tallaPantalon?.valor ??
                         "N/A"}
                     </div>
                   </div>
                   <div>Talla De Calzado:</div>
                   <div>
                     <div>
-                      {family.perfil_fisico_familiar?.tallaZapatos?.talla ??
+                      {family.perfil_fisico_familiar?.tallaZapatos?.valor ??
                         "N/A"}
                     </div>
                   </div>

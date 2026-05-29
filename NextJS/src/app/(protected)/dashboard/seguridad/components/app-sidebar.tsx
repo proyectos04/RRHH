@@ -91,6 +91,11 @@ const items: MenuItem[] = [
       },
     ],
   },
+  {
+    icon: BookCheck,
+    title: "Autogestión",
+    url: "/dashboard/autogestion",
+  },
 ];
 
 export function AppSidebarSecurity() {

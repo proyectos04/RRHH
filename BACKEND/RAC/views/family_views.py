@@ -5,6 +5,7 @@ from rest_framework import status
 from django.db import transaction
 from rest_framework.response import Response
 from RAC.utils.constants import *
+from RAC.utils.data_formatters import extract_first_error
 from ..models.family_personal_models import Employeefamily, Parentesco, FamilyDocument
 from RAC.models.personal_models import Employee
 from ..serializers.family_serializers import FamilyCreateSerializer,FamilyListSerializer,ParentescoSerializer,FamilyDocumentSerializer,FamilyDocumentReadSerializer
@@ -47,8 +48,7 @@ def registrar_familiar(request, cedula_empleado):
             return Response({"status": "Error", "message": str(e)}, status=400)
 
     # Manejo de errores de validación (tu lógica actual)
-    error_dict = serializer.errors
-    clean_message = list(error_dict.values())[0][0]
+    clean_message = extract_first_error(serializer.errors)
     return Response({"status": "Error", "message": clean_message}, status=400)
 
 @extend_schema(
@@ -85,9 +85,7 @@ def actualizar_familiar(request, familiar_id):
         except Exception as e:
             return Response({"status": "Error", "message": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-    error_dict = serializer.errors
-    first_error = next(iter(error_dict.values()))
-    clean_message = first_error[0] if isinstance(first_error, list) else first_error
+    clean_message = extract_first_error(serializer.errors)
     
     return Response({"status": "Error", "message": clean_message}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -324,12 +322,7 @@ def registrar_familiares_masivo(request,cedula_empleado):
                 "status": "Error",
                 "message": str(e)
             }, status=status.HTTP_400_BAD_REQUEST)
-    clean_message = "Error de validación en los datos."
-    for error in serializer.errors:
-        if error:
-            first_field_errors = list(error.values())[0]
-            clean_message = first_field_errors[0] if isinstance(first_field_errors, list) else first_field_errors
-            break  
+    clean_message = extract_first_error(serializer.errors)
 
     return Response({
         "status": "Error",

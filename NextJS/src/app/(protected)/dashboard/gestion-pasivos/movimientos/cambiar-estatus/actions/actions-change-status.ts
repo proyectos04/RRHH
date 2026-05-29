@@ -3,6 +3,7 @@
 import z from "zod";
 import { schemaStatusChange } from "../schema/schemaChangeStatus";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export default async function ChangeStatusAction(
@@ -18,13 +19,10 @@ export default async function ChangeStatusAction(
     }
 
     const userId = Number.parseInt(session.user.id);
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}historyEmployee/Estatus/${values.cargo}/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `historyEmployee/Estatus/${values.cargo}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           estatus_id: values.estatus_id,
           usuario_id: userId,
@@ -32,18 +30,7 @@ export default async function ChangeStatusAction(
         }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
-
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
-    return {
-      success: false,
-      message: getResponse.message,
-    };
+    return { success: data.status === "success", message: data.message };
   } catch {
     return {
       success: false,

@@ -15,6 +15,7 @@ from drf_spectacular.utils import extend_schema
 
 from rest_framework.response import Response
 from rest_framework import status
+from ..utils.data_formatters import extract_first_error
 
 
 
@@ -40,9 +41,7 @@ def update_position_passive(request, id):
         }, status=status.HTTP_200_OK)
 
     except ValidationError:
-        error_dict = serializer.errors
-        first_error_field = list(error_dict.values())[0]
-        clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+        clean_message = extract_first_error(serializer.errors)
 
         return Response({
             'status': "error",
@@ -91,7 +90,7 @@ def work_codes_passive(request):
             serializer = ListerCodigosPassiveSerializer(codigos, many=True)
             
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Códigos de trabajo listados correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -170,6 +169,10 @@ def list_employees_pasive(request):
             'message': f"Error al recuperar la lista de empleados: {str(e)}",
             'data': []
         }, status=status.HTTP_400_BAD_REQUEST)
+    
+
+
+    
       
 @extend_schema(
     tags=["Gestion de Personal Pasivo"],

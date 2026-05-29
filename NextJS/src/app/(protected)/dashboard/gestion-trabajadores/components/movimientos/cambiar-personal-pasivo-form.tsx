@@ -2,14 +2,13 @@
 
 import {
   getEmployeeById,
-  getEmployeeInfo,
   getNominaPasivo,
   getReasonLeaving,
   getStatusEmployee,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import GestionAction from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/cambiar-pasivo/actions/gestion-persona-action";
 import { schemaPasivo } from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/cambiar-pasivo/schema/schemaPasivo";
-import { ApiResponse, EmployeeData, EmployeeInfo } from "@/app/types/types";
+import { EmployeeData } from "@/app/types/types";
 import {
   Select,
   SelectContent,
@@ -18,8 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleAlert, Search } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import useSWR from "swr";
@@ -41,13 +39,10 @@ import {
 import { Input } from "../../../../../../components/ui/input";
 import { Label } from "../../../../../../components/ui/label";
 import { Switch } from "../../../../../../components/ui/switch";
-import Error from "../error/error";
+import EmployeeSearchForm from "../employees/employee-search-form";
+import { EmployeeInfoBanner } from "@/shared/components/employee-info-banner";
+import { useEmployeeSearch } from "@/shared/hooks/useEmployeeSearch";
 export function PasivoForm() {
-  const [searchEmployee, setSearchEmployee] = useState<string | undefined>(
-    undefined,
-  );
-
-  const [employee, setEmployee] = useState<ApiResponse<EmployeeData>>();
   const [isPending, startTransition] = useTransition();
 
   const { data: nominaPasivo, isLoading: isLoadingNominaPasivo } = useSWR(
@@ -70,35 +65,25 @@ export function PasivoForm() {
       usuario_id: 0,
       motivo: 0,
       tiponominaid: 0,
-      codigo_nuevo: "",
       liberar_activos: false,
     },
   });
 
-  const schemaSearchEmployee = z.object({
-    searchEmployeeForm: z.string(),
+  const { employee, isLoading, hasSearched, search, clear } = useEmployeeSearch<EmployeeData>({
+    searchFn: getEmployeeById,
   });
-  const handleSearch = async (values: z.infer<typeof schemaSearchEmployee>) => {
-    if (!values.searchEmployeeForm) return;
-    const response = await getEmployeeById(values.searchEmployeeForm);
-    setEmployee(response);
-  };
-  const formSearch = useForm({
-    defaultValues: {
-      searchEmployeeForm: "",
-    },
-    resolver: zodResolver(schemaSearchEmployee),
-  });
+
   const onSubmit = (data: z.infer<typeof schemaPasivo>) => {
     startTransition(async () => {
-      if (!Array.isArray(employee) && employee?.data.cedulaidentidad) {
+      if (employee && employee.cedulaidentidad) {
         const response = await GestionAction(
           data,
-          employee.data.cedulaidentidad,
+          employee.cedulaidentidad,
         );
         if (response.success) {
           toast.success(response.message);
           form.reset();
+          clear();
         } else {
           toast.error(response.message);
         }
@@ -116,45 +101,15 @@ export function PasivoForm() {
     <>
       <Card>
         <CardContent className="space-y-5">
-          <Form {...formSearch}>
-            <form
-              className="flex flex-row justify-between  gap-2"
-              onSubmit={formSearch.handleSubmit(handleSearch)}
-            >
-              <FormField
-                name="searchEmployeeForm"
-                control={formSearch.control}
-                render={({ field }) => (
-                  <FormItem className="flex-1 ">
-                    <FormLabel>Buscar Trabajador</FormLabel>
-                    <FormControl>
-                      <Input placeholder="00000000" type="number" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button className="self-baseline-last cursor-pointer">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
-          </Form>
-          {employee && employee?.status !== "error" && (
-            <div className={` rounded-sm p-2 `}>
-              {!Array.isArray(employee) && (
-                <div className="flex flex-row gap-2  border-2 border-blue-400/45 bg-blue-200/40 p-2 rounded-sm">
-                  <p>Nombres: {employee.data.nombres}</p>
-                  <p>Cedula: {employee.data.cedulaidentidad}</p>
-                </div>
-              )}
-            </div>
-          )}
-          {employee && employee?.status == "error" && (
-            <Error errorMessage="Cédula Invalida" />
-          )}
+          <EmployeeSearchForm onSearch={search} />
 
-          {employee &&
-            !Array.isArray(employee) &&
-            employee?.status !== "error" && (
+          <EmployeeInfoBanner
+            employee={employee}
+            hasSearched={hasSearched}
+            isLoading={isLoading}
+          />
+
+          {employee && (
               <div>
                 <Form {...form}>
                   <form
@@ -222,23 +177,6 @@ export function PasivoForm() {
                                   ))}
                                 </SelectContent>
                               </Select>
-
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="codigo_nuevo"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Ingrese El Código A Asignar</FormLabel>
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder="Ingrese El Código"
-                                />
-                              </FormControl>
 
                               <FormMessage />
                             </FormItem>

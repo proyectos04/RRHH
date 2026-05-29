@@ -1,247 +1,145 @@
 "use client";
-import PageLayout from "@/components/layout/page-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Camera,
-  Download,
-  IdCard,
-  Loader2,
-  Lock,
-  Printer,
-  Upload,
-} from "lucide-react";
-import { useState, useEffect, useRef, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { toast } from "sonner";
 
-interface EmployeeInfo {
-  id: number;
-  cedula: string;
-  nombre_completo: string;
-  cargo: string;
-  departamento: string;
-  codigo: string;
-  total_solicitudes: number;
+import { useState, useRef, useTransition, Suspense, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import useSWR from "swr";
+import { toast } from "sonner";
+import { Camera, Download, IdCard, Loader2, Lock, Printer, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
+import InputForm from "@/components/input-form";
+import { SelectForm } from "@/components/select-form";
+import PageLayout from "@/components/layout/page-layout";
+import { searchEmployees, getMotivos } from "../api/getInfoCarnet";
+import {
+  actualizarVistaPrevia,
+  subirFoto,
+  generarCarnet,
+} from "./actions/generarActions";
+import { schemaGenerar } from "../schemas/schemaGenerar";
+import type { EmployeeCarnet, MotivoOption } from "../types/carnetizacion";
+import type { z } from "zod";
+
+function truncarNombre(nombreCompleto: string): string {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  if (partes.length <= 3) return nombreCompleto;
+  const nombres = partes.slice(0, 2);
+  const apellidos = partes.slice(-2);
+  return [...nombres, ...apellidos].join(" ");
 }
 
-interface MotivoOption {
-  id: number;
-  nombre: string;
+type GenerarValues = z.infer<typeof schemaGenerar>;
+
+function downloadPdfBase64(base64: string, filename: string) {
+  const byteCharacters = atob(base64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  }
+  const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
 }
 
 function GenerarCarnetContent() {
   const searchParams = useSearchParams();
   const cedula = searchParams.get("cedula") || "";
-
-  const [employee, setEmployee] = useState<EmployeeInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  // Campos editables
-  const [nombre, setNombre] = useState("");
-  const [motivoId, setMotivoId] = useState<number>(0);
-  const [motivos, setMotivos] = useState<MotivoOption[]>([]);
+  const router = useRouter();
   const [vistaPrevia, setVistaPrevia] = useState("");
-
+  const [extraSolicitudes, setExtraSolicitudes] = useState(0);
+  const [isPendingGenerar, startTransitionGenerar] = useTransition();
+  const [isPendingFoto, startTransitionFoto] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const djangoUrl =
-    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace("/api/", "") ||
-    "http://localhost:8000";
+  const form = useForm<GenerarValues>({
+    resolver: zodResolver(schemaGenerar),
+    defaultValues: { nombre: "", motivo_id: 0 },
+  });
+
+  const { data: employees, isLoading: isLoadingEmployee } = useSWR(
+    cedula ? ["employee-search", cedula] : null,
+    () => searchEmployees(cedula),
+  );
+
+  const { data: motivos } = useSWR("motivos-carnet", getMotivos);
+
+  const employee: EmployeeCarnet | undefined = employees?.find(
+    (e) => e.cedula === cedula,
+  );
+  const totalSolicitudes = (employee?.total_solicitudes ?? 0) + extraSolicitudes;
+  const watchedNombre = form.watch("nombre");
 
   useEffect(() => {
-    if (!cedula) return;
-
-    const loadData = async () => {
-      setLoading(true);
-      try {
-        // Cargar motivos
-        const motivosRes = await fetch(
-          `${djangoUrl}/carnetizacion/api/motivos/`,
-        );
-        const motivosData = await motivosRes.json();
-        setMotivos(motivosData);
-        if (motivosData.length > 0) setMotivoId(motivosData[0].id);
-
-        // Buscar empleado
-        const empRes = await fetch(
-          `${djangoUrl}/carnetizacion/api/buscar/?q=${cedula}`,
-        );
-        const empData = await empRes.json();
-        const emp = empData.find(
-          (e: EmployeeInfo) => e.cedula === cedula,
-        );
-
-        if (emp) {
-          setEmployee(emp);
-          setNombre(emp.nombre_completo);
-          // Vista previa inicial con datos directos del empleado
-          await fetch(
-            `${djangoUrl}/carnetizacion/actualizar-vista-previa/${emp.cedula}/`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                nombre: emp.nombre_completo,
-                cedula: emp.cedula,
-              }),
-            },
-          )
-            .then((r) => r.json())
-            .then((data) => {
-              if (data.success) setVistaPrevia(data.vista_previa);
-            })
-            .catch(() => {});
-        }
-      } catch {
-        toast.error("Error al cargar datos del empleado");
-      } finally {
-        setLoading(false);
+    if (!employee || !motivos?.length) return;
+    form.reset({
+      nombre: truncarNombre(employee.nombre_completo),
+      motivo_id: motivos[0].id,
+    });
+    actualizarVistaPrevia(cedula, truncarNombre(employee.nombre_completo)).then((result) => {
+      if (result.success && result.vista_previa) {
+        setVistaPrevia(result.vista_previa);
       }
-    };
+    });
+  }, [employee, motivos, cedula, form]);
 
-    loadData();
-  }, [cedula, djangoUrl]);
-
-  const actualizarVistaPrevia = async (ced?: string) => {
-    try {
-      const res = await fetch(
-        `${djangoUrl}/carnetizacion/actualizar-vista-previa/${ced || cedula}/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nombre,
-            cedula: ced || cedula,
-          }),
-        },
-      );
-      const data = await res.json();
-      if (data.success) {
-        setVistaPrevia(data.vista_previa);
+  useEffect(() => {
+    if (!cedula || !watchedNombre) return;
+    const timer = setTimeout(async () => {
+      const result = await actualizarVistaPrevia(cedula, watchedNombre);
+      if (result.success && result.vista_previa) {
+        setVistaPrevia(result.vista_previa);
       }
-    } catch {
-      // Vista previa no crítica
-    }
-  };
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [cedula, watchedNombre]);
 
-  const subirFoto = async (file: File) => {
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("foto", file);
-      formData.append("nombre", nombre);
-      formData.append("cedula", cedula);
-
-      const res = await fetch(
-        `${djangoUrl}/carnetizacion/subir-foto/${cedula}/`,
-        {
-          method: "POST",
-          body: formData,
-        },
-      );
-
-      const data = await res.json();
-      if (data.success) {
-        setVistaPrevia(data.vista_previa);
+  const handleFotoUpload = (file: File) => {
+    startTransitionFoto(async () => {
+      const nombre = form.getValues("nombre");
+      const result = await subirFoto(cedula, nombre, file);
+      if (result.success && result.vista_previa) {
+        setVistaPrevia(result.vista_previa);
         toast.success("Foto actualizada correctamente");
       } else {
-        toast.error(data.error || "Error al subir foto");
+        toast.error(result.message);
       }
-    } catch {
-      toast.error("Error al subir la foto");
-    } finally {
-      setUploading(false);
-    }
+    });
   };
 
-  const generarCarnet = async () => {
-    setGenerating(true);
-    try {
-      // 1. Registrar solicitud
-      await fetch(
-        `${djangoUrl}/carnetizacion/registrar-solicitud/${cedula}/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ motivo_id: motivoId, observaciones: "" }),
-        },
-      );
-
-      // 2. Generar PDF
-      const res = await fetch(
-        `${djangoUrl}/carnetizacion/generar/${cedula}/`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            motivo_id: motivoId,
-            observaciones: "",
-            datos_editados: {
-              nombre,
-              cedula,
-            },
-          }),
-        },
-      );
-
-      if (!res.ok) throw new Error("Error al generar");
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `carnet_${cedula}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-
-      toast.success("Carnet generado y descargado exitosamente");
-
-      // Actualizar contador
-      if (employee) {
-        setEmployee({
-          ...employee,
-          total_solicitudes: employee.total_solicitudes + 1,
-        });
+  const handleGenerarCarnet = () => {
+    startTransitionGenerar(async () => {
+      const motivo_id = form.getValues("motivo_id");
+      const nombre = form.getValues("nombre");
+      const result = await generarCarnet(cedula, motivo_id, nombre);
+      if (!result.success || !result.data) {
+        toast.error(result.message);
+        return;
       }
-    } catch {
-      toast.error("Error al generar el carnet");
-    } finally {
-      setGenerating(false);
-    }
+      downloadPdfBase64(result.data, `carnet_${cedula}.pdf`);
+      toast.success("Carnet generado y descargado exitosamente");
+      setExtraSolicitudes((prev) => prev + 1);
+    });
   };
 
   if (!cedula) {
     return (
-      <PageLayout
-        title="Generar Carnet"
-        description="Seleccione un trabajador desde la búsqueda"
-      >
+      <PageLayout title="Generar Carnet" description="Seleccione un trabajador desde la búsqueda">
         <Card className="max-w-md mx-auto mt-10">
           <CardContent className="text-center py-12">
             <IdCard className="h-16 w-16 mx-auto text-gray-300" />
-            <p className="text-muted-foreground mt-4">
-              No se ha seleccionado un trabajador.
-            </p>
-            <Button
-              className="mt-4"
-              onClick={() =>
-                (window.location.href = "/dashboard/carnetizacion/buscar")
-              }
-            >
+            <p className="text-muted-foreground mt-4">No se ha seleccionado un trabajador.</p>
+            <Button className="mt-4" onClick={() => router.push("/dashboard/carnetizacion/buscar")}>
               Ir a Búsqueda
             </Button>
           </CardContent>
@@ -250,7 +148,7 @@ function GenerarCarnetContent() {
     );
   }
 
-  if (loading) {
+  if (isLoadingEmployee) {
     return (
       <PageLayout title="Generar Carnet">
         <div className="flex justify-center items-center py-20">
@@ -264,10 +162,9 @@ function GenerarCarnetContent() {
   return (
     <PageLayout
       title="Generar Carnet"
-      description={`Procesando carnet para: ${employee?.nombre_completo || cedula}`}
+      description={`Procesando carnet para: ${employee ? truncarNombre(employee.nombre_completo) : cedula}`}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-        {/* Panel izquierdo: Datos editables */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -276,151 +173,126 @@ function GenerarCarnetContent() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Cédula (readonly) */}
-            <div>
-              <label className="text-sm font-medium flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Cédula (no modificable)
-              </label>
-              <Input value={cedula} disabled className="mt-1 bg-gray-100" />
-            </div>
-
-            {/* Nombre (editable) */}
-            <div>
-              <label className="text-sm font-medium">Nombre completo</label>
-              <Input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                onBlur={() => actualizarVistaPrevia()}
-                className="mt-1"
-              />
-            </div>
-
-            {/* Código (readonly) */}
-            <div>
-              <label className="text-sm font-medium flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Código
-              </label>
-              <Input value={employee?.codigo || ""} disabled className="mt-1 bg-gray-100" />
-            </div>
-
-            {/* Cargo (readonly) */}
-            <div>
-              <label className="text-sm font-medium flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Cargo
-              </label>
-              <Input value={employee?.cargo || ""} disabled className="mt-1 bg-gray-100" />
-            </div>
-
-            {/* Dirección General (readonly) */}
-            <div>
-              <label className="text-sm font-medium flex items-center gap-1">
-                <Lock className="h-3 w-3" /> Dirección General
-              </label>
-              <Input value={employee?.departamento || ""} disabled className="mt-1 bg-gray-100" />
-            </div>
-
-            {/* Info */}
-            <div className="flex items-center justify-between">
-              <Badge variant="secondary">
-                <Printer className="h-3 w-3 mr-1" />
-                {employee?.total_solicitudes || 0} carnets emitidos
-              </Badge>
-            </div>
-
-            <hr />
-
-            {/* Motivo */}
-            <div>
-              <label className="text-sm font-medium">Motivo</label>
-              <Select
-                value={String(motivoId)}
-                onValueChange={(val) => setMotivoId(Number(val))}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {motivos.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>
-                      {m.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Foto */}
-            <div>
-              <label className="text-sm font-medium">Foto</label>
-              <div className="flex gap-2 mt-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) subirFoto(file);
-                  }}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                  ) : (
-                    <Upload className="h-4 w-4 mr-1" />
-                  )}
-                  Subir Foto
-                </Button>
-                <Button variant="outline" size="sm" disabled>
-                  <Camera className="h-4 w-4 mr-1" />
-                  Tomar Foto
-                </Button>
+            <Form {...form}>
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Cédula (no modificable)
+                </label>
+                <Input value={cedula} disabled className="mt-1 bg-gray-100" />
               </div>
-            </div>
 
-            {/* Botón generar */}
-            <Button
-              className="w-full mt-4"
-              size="lg"
-              onClick={generarCarnet}
-              disabled={generating}
-            >
-              {generating ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                <Download className="h-5 w-5 mr-2" />
-              )}
-              {generating ? "Generando..." : "Generar Carnet"}
-            </Button>
+              <InputForm<GenerarValues>
+                form={form}
+                nameInput="nombre"
+                label="Nombre completo"
+                placeholder="Nombre del trabajador"
+                type="text"
+              />
+
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Código
+                </label>
+                <Input value={employee?.codigo || ""} disabled className="mt-1 bg-gray-100" />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Cargo
+                </label>
+                <Input value={employee?.cargo || ""} disabled className="mt-1 bg-gray-100" />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium flex items-center gap-1">
+                  <Lock className="h-3 w-3" /> Dirección General / Oficina
+                </label>
+                <Input value={employee?.departamento || ""} disabled className="mt-1 bg-gray-100" />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Badge variant="secondary">
+                  <Printer className="h-3 w-3 mr-1" />
+                  {totalSolicitudes} carnets emitidos
+                </Badge>
+              </div>
+
+              <hr />
+
+              <SelectForm<GenerarValues, MotivoOption>
+                form={form}
+                nameSalect="motivo_id"
+                Formlabel="Motivo"
+                SelectLabelItem="Seleccione un motivo"
+                placeholder="Seleccione..."
+                options={motivos || []}
+                isLoading={!motivos}
+                valueKey="id"
+                labelKey="nombre"
+              />
+
+              <div>
+                <label className="text-sm font-medium">Foto</label>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFotoUpload(file);
+                    }}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isPendingFoto}
+                  >
+                    {isPendingFoto ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : (
+                      <Upload className="h-4 w-4 mr-1" />
+                    )}
+                    Subir Foto
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                className="w-full mt-4"
+                size="lg"
+                onClick={handleGenerarCarnet}
+                disabled={isPendingGenerar}
+              >
+                {isPendingGenerar ? (
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                ) : (
+                  <Download className="h-5 w-5 mr-2" />
+                )}
+                {isPendingGenerar ? "Generando..." : "Generar Carnet"}
+              </Button>
+            </Form>
           </CardContent>
         </Card>
 
-        {/* Panel derecho: Vista previa */}
         <Card>
           <CardHeader>
             <CardTitle>Vista Previa del Carnet</CardTitle>
           </CardHeader>
           <CardContent>
             {vistaPrevia ? (
-              <div
-                className="flex justify-center"
-                dangerouslySetInnerHTML={{ __html: vistaPrevia }}
-              />
+              <div className="flex justify-center" dangerouslySetInnerHTML={{ __html: vistaPrevia }} />
             ) : (
               <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                <IdCard className="h-20 w-20" />
+                <Camera className="h-20 w-20" />
                 <p className="mt-4">La vista previa se cargará aquí</p>
               </div>
             )}
-              <p className="text-sm text-muted-foreground text-center mt-4">
-                Solo el nombre es editable. Cédula, código, cargo y dirección
-                general se cargan automáticamente.
-              </p>
+            <p className="text-sm text-muted-foreground text-center mt-4">
+              Solo el nombre es editable. Cédula, código, cargo y dirección general se cargan automáticamente.
+            </p>
           </CardContent>
         </Card>
       </div>

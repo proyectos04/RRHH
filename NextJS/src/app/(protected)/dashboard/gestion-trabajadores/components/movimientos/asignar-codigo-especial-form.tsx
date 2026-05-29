@@ -1,4 +1,5 @@
 "use client";
+import { apiFetch } from "@/lib/api-client";
 import {
   getCargo,
   getCargoEspecifico,
@@ -7,15 +8,17 @@ import {
   getDirectionGeneral,
   getDirectionGeneralById,
   getDirectionLine,
+  getEmployeeById,
   getEmployeeInfo,
   getGrado,
   getNominaEspecial,
   getOrganismosAds,
-  getTiposComision,
+  getPoliticas,
+  getTiposProcedencia,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import { AsignSpecialCode } from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/asignar-codigo-especial/actions/asign-special-code";
 import { schemaCodeEspecial } from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/asignar-codigo-especial/schema/schemaCodeEspecial";
-import { EmployeeInfo } from "@/app/types/types";
+import { EmployeeInfo, Politica } from "@/app/types/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -36,8 +39,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleAlert, Search } from "lucide-react";
-import { useState, useTransition } from "react";
+import { CalendarIcon, Search } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { formatInTimeZone } from "date-fns-tz";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import useSWR from "swr";
@@ -54,6 +60,9 @@ import {
 import { Spinner } from "../../../../../../components/ui/spinner";
 import { Switch } from "../../../../../../components/ui/switch";
 import Error from "../error/error";
+import EmployeeSearchForm from "../employees/employee-search-form";
+import { EmployeeInfoBanner } from "@/shared/components/employee-info-banner";
+import { useEmployeeSearch } from "@/shared/hooks/useEmployeeSearch";
 
 interface CodigoCatalogFormProps {
   onSuccess?: (bool: boolean) => true | false;
@@ -65,19 +74,19 @@ export function CodigoCatalogEspecialForm({
   const [dependencyId, setDependencyId] = useState<number | string>("");
   const [activeDirectionGeneral, setActiveDirectionGeneral] =
     useState<boolean>(false);
-  const [searchEmployee, setSearchEmployee] = useState<string | undefined>(
-    undefined,
-  );
   const [selecteIdDirectionGeneral, setSelecteIdDirectionGeneral] =
     useState<string>();
   const [selecteIdDirectionLine, setSelecteIdDirectionLine] =
     useState<string>();
-  const [employee, setEmployee] = useState<EmployeeInfo | []>();
 
   const [activeDirectionLine, setActiveDirectionLine] =
     useState<boolean>(false);
   const [activeCoordination, setActiveCoordination] = useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
+  const [showContratoForm, setShowContratoForm] = useState(false);
+  const [contratoData, setContratoData] = useState({ n_contrato: "", politica_id: 0, fecha_ingreso: new Date(), fecha_culminacion: undefined as Date | undefined });
+  const [savingContrato, setSavingContrato] = useState(false);
+  const [hasActiveContrato, setHasActiveContrato] = useState(false);
 
   const validateDirectionGeneral = () => {
     if (!activeDirectionGeneral) form.setValue("DireccionGeneral", 0);
@@ -134,10 +143,11 @@ export function CodigoCatalogEspecialForm({
     "organismoAds",
     async () => await getOrganismosAds(),
   );
-  const { data: tiposComision, isLoading: isLoadingTiposComision } = useSWR(
-    "tiposComision",
-    async () => await getTiposComision(),
+  const { data: tiposProcedencia, isLoading: isLoadingTiposProcedencia } = useSWR(
+    "tiposProcedencia",
+    async () => await getTiposProcedencia(),
   );
+  const { data: politicas } = useSWR("politicas", getPoliticas);
   const form = useForm({
     resolver: zodResolver(schemaCodeEspecial),
     defaultValues: {
@@ -150,57 +160,58 @@ export function CodigoCatalogEspecialForm({
       DireccionGeneral: 0,
       DireccionLinea: 0,
       Coordinacion: 0,
-      tipo_comision: 0,
+      tipo_procedencia: 0,
     },
   });
-
-  async function onSubmit(data: z.infer<typeof schemaCodeEspecial>) {
+  const onSubmit = (values: z.infer<typeof schemaCodeEspecial>) => {
     startTransition(async () => {
-      try {
-        const response = await AsignSpecialCode(data);
-        if (response.success) {
-          form.reset({
-            employee: "",
-            OrganismoAdscritoid: 0,
-            Coordinacion: 0,
-            denominacioncargoespecificoid: 0,
-            denominacioncargoid: 0,
-            DireccionGeneral: 0,
-            DireccionLinea: 0,
-            gradoid: 0,
-            tiponominaid: 0,
-            tipo_comision: 0,
-          });
-          toast.success(response.message);
-          onSuccess?.(true);
-        } else {
-          toast.error(response.message);
-        }
-      } catch {
-        toast.error("Error Al Enviar la informacion");
+      const response = await AsignSpecialCode(values);
+      if (response.success) {
+        toast.success(response.message);
+        onSuccess?.(true);
+      } else {
+        toast.error(response.message);
       }
     });
-  }
-  const schemaSearchEmployee = z.object({
-    searchEmployeeForm: z.string(),
-  });
-  const handleSearch = async (values: z.infer<typeof schemaSearchEmployee>) => {
-    if (!values.searchEmployeeForm) return;
-    const response = await getEmployeeInfo(values.searchEmployeeForm);
-    if (response.data) {
-      setEmployee(response.data);
-      form.setValue("employee", response.data.cedulaidentidad, {
-        shouldValidate: true,
-        shouldDirty: true,
-      });
-    }
   };
-  const formSearch = useForm({
-    defaultValues: {
-      searchEmployeeForm: "",
-    },
-    resolver: zodResolver(schemaSearchEmployee),
-  });
+
+  const { employee, isLoading: isLoadingSearch, hasSearched, search } =
+    useEmployeeSearch<EmployeeInfo>({
+      searchFn: getEmployeeInfo,
+      onFound: (emp) => {
+        form.setValue("employee", emp.cedulaidentidad, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      },
+    });
+
+  useEffect(() => {
+    if (!employee) return;
+    let cancelled = false;
+    (async () => {
+      const fullEmployee = await getEmployeeById(employee.cedulaidentidad);
+      if (cancelled) return;
+      if (fullEmployee.data) {
+        const hasActive = fullEmployee.data.contrato?.some(c => c.estatus?.estatus !== 'VENCIDO');
+        setHasActiveContrato(!!hasActive);
+        if (!hasActive) {
+          setShowContratoForm(true);
+          const initials = politicas?.data?.[0]?.tipo_politica?.charAt(0)?.toUpperCase() || 'C';
+          const count = (fullEmployee.data.contrato?.length || 0) + 1;
+          setContratoData(prev => ({ ...prev, n_contrato: `${initials}-${fullEmployee.data.cedulaidentidad}-${String(count).padStart(2, '0')}` }));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [employee]);
+  const generateNContrato = (cedula: string, politicaId: number) => {
+    const selectedPolitica = politicas?.data?.find(p => p.id === politicaId);
+    const initials = selectedPolitica?.tipo_politica?.charAt(0)?.toUpperCase() || 'C';
+    const existingCount = (employee ? (employee as any).contrato?.length || 0 : 0);
+    const count = existingCount + 1;
+    return `${initials}-${cedula}-${String(count).padStart(2, '0')}`;
+  };
   return (
     <Card>
       <CardHeader>
@@ -210,28 +221,121 @@ export function CodigoCatalogEspecialForm({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...formSearch}>
-          <form
-            className="flex flex-row justify-between  gap-2"
-            onSubmit={formSearch.handleSubmit(handleSearch)}
-          >
-            <FormField
-              name="searchEmployeeForm"
-              control={formSearch.control}
-              render={({ field }) => (
-                <FormItem className="flex-1 ">
-                  <FormLabel>Buscar Trabajador</FormLabel>
-                  <FormControl>
-                    <Input placeholder="00000000" type="number" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-            <Button className="self-baseline-last cursor-pointer">
-              <Search className="h-4 w-4" />
+        <EmployeeSearchForm onSearch={search} />
+
+        <div className="mt-4">
+          <EmployeeInfoBanner
+            employee={employee}
+            hasSearched={hasSearched}
+            isLoading={isLoadingSearch}
+            extraFields={
+              employee?.estadoCivil
+                ? [{ label: "Estado Civil", value: employee.estadoCivil.estadoCivil }]
+                : []
+            }
+          />
+        </div>
+
+        {showContratoForm && !hasActiveContrato && employee && (
+          <div className="border-2 border-yellow-400/45 bg-yellow-100/40 p-4 rounded-sm space-y-3 mt-3">
+            <Label className="text-lg font-bold">El trabajador no tiene contrato activo</Label>
+            <p className="text-sm">Debe registrar un contrato antes de asignar el cargo.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>N° Contrato</Label>
+                <Input
+                  placeholder="Auto-generado si se deja vacío"
+                  value={contratoData.n_contrato}
+                  onChange={(e) => setContratoData(prev => ({ ...prev, n_contrato: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label>Tipo de Política</Label>
+                <Select
+                  onValueChange={(v) => {
+                    const politicaId = Number(v);
+                    setContratoData(prev => ({
+                      ...prev,
+                      politica_id: politicaId,
+                      n_contrato: prev.n_contrato || generateNContrato((employee as any).cedulaidentidad, politicaId)
+                    }));
+                  }}
+                  value={contratoData.politica_id ? contratoData.politica_id.toString() : ""}
+                >
+                  <SelectTrigger className="w-full truncate"><SelectValue placeholder="Seleccione" /></SelectTrigger>
+                  <SelectContent>
+                    {politicas?.data?.map((p: Politica) => (
+                      <SelectItem key={p.id} value={p.id.toString()}>{p.tipo_politica}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Fecha de Ingreso</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {contratoData.fecha_ingreso ? formatInTimeZone(contratoData.fecha_ingreso, "UTC", "dd/MM/yyyy") : "..."}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={contratoData.fecha_ingreso} onSelect={(d) => d && setContratoData(prev => ({ ...prev, fecha_ingreso: d }))} disabled={(d) => d > new Date() || d < new Date("1900-01-01")} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Fecha de Culminación (opcional)</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-between font-normal">
+                      {contratoData.fecha_culminacion ? formatInTimeZone(contratoData.fecha_culminacion, "UTC", "dd/MM/yyyy") : "Seleccionar..."}
+                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={contratoData.fecha_culminacion} onSelect={(d) => d && setContratoData(prev => ({ ...prev, fecha_culminacion: d }))} disabled={(d) => d < new Date("1900-01-01")} />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            <Button
+              onClick={async () => {
+                if (!contratoData.politica_id) { toast.error("Seleccione una política"); return; }
+                if (!contratoData.fecha_ingreso) { toast.error("Seleccione fecha de ingreso"); return; }
+                setSavingContrato(true);
+                const n_contrato = contratoData.n_contrato || generateNContrato((employee as any).cedulaidentidad, contratoData.politica_id);
+                const session = await fetch('/api/auth/session').then(r => r.json());
+                const userId = session?.user?.id;
+                const payload = {
+                  usuario_id: Number(userId),
+                  contrato: [{
+                    n_contrato,
+                    fecha_ingreso: contratoData.fecha_ingreso.toISOString().split('T')[0],
+                    politica_id: contratoData.politica_id,
+                    fecha_culminacion: contratoData.fecha_culminacion ? contratoData.fecha_culminacion.toISOString().split('T')[0] : null,
+                  }]
+                };
+                const data = await apiFetch<{ status: string; message?: string }>(`Employee/${(employee as any).id}/`, {
+                  method: 'PATCH', body: JSON.stringify(payload)
+                });
+                setSavingContrato(false);
+                if (data.status === "success") {
+                  toast.success("Contrato registrado correctamente");
+                  setHasActiveContrato(true);
+                  setShowContratoForm(false);
+                } else {
+                  toast.error(data.message || "Error al registrar contrato");
+                }
+              }}
+              disabled={savingContrato}
+              className="w-full cursor-pointer"
+            >
+              {savingContrato ? "Guardando..." : "Guardar Contrato"}
             </Button>
-          </form>
-        </Form>
+          </div>
+        )}
+        {employee && hasActiveContrato && (
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
@@ -412,10 +516,10 @@ export function CodigoCatalogEspecialForm({
               />
               <FormField
                 control={form.control}
-                name="tipo_comision"
+                name="tipo_procedencia"
                 render={({ field }) => (
                   <FormItem className="col-span-2">
-                    <FormLabel>Tipo De Comisión</FormLabel>
+                    <FormLabel>Tipo De Procedencia</FormLabel>
                     <Select
                       onValueChange={(values) => {
                         field.onChange(Number.parseInt(values));
@@ -425,17 +529,17 @@ export function CodigoCatalogEspecialForm({
                         <SelectTrigger className="w-full truncate">
                           <SelectValue
                             placeholder={`${
-                              isLoadingTiposComision
-                                ? "Cargando Tipos De Comisión"
-                                : "Seleccione Un Tipo De Comisión"
+                              isLoadingTiposProcedencia
+                                ? "Cargando Tipos De Procedencia"
+                                : "Seleccione Un Tipo De Procedencia"
                             }`}
                           />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {tiposComision?.data.map((tipo, i) => (
+                        {tiposProcedencia?.data.map((tipo, i) => (
                           <SelectItem key={i} value={`${tipo.id}`}>
-                            {tipo.tipo_comision}
+                            {tipo.tipo_procedencia}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -637,25 +741,6 @@ export function CodigoCatalogEspecialForm({
                 </>
               )}
             </div>
-            {employee && (
-              <div
-                className={` ${
-                  !Array.isArray(employee) &&
-                  "border-2 border-blue-400/45 bg-blue-200/40"
-                }  rounded-sm p-2 `}
-              >
-                {!Array.isArray(employee) ? (
-                  <>
-                    <p>Nombres: {employee.nombres}</p>
-                    <p>Apellidos: {employee.apellidos}</p>
-                    <p>Cédula: {employee.cedulaidentidad}</p>
-                    <p>Estado Civil: {employee.estadoCivil.estadoCivil}</p>
-                  </>
-                ) : (
-                  <Error errorMessage="Cédula Invalida" />
-                )}
-              </div>
-            )}
             {/* Buttons */}
             <div className="flex gap-3 justify-end">
               <Button type="submit" disabled={isPending} className="w-full">
@@ -671,6 +756,7 @@ export function CodigoCatalogEspecialForm({
             </div>
           </form>
         </Form>
+        )}
       </CardContent>
     </Card>
   );

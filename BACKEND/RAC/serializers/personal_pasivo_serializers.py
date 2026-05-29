@@ -115,10 +115,12 @@ class EmployeePasiveDetailSerializer(serializers.ModelSerializer):
     perfil_fisico = serializers.SerializerMethodField()
     formacion_academica = serializers.SerializerMethodField()
     anos_apn = serializers.IntegerField(source='total_anos_apn', read_only=True)
-    antecedentes = AntecedentesServicioSerializer(
-        source='antecedentes_servicio_set', many=True,read_only=True)
+    antecedentes = serializers.SerializerMethodField()
+    contrato = serializers.SerializerMethodField()
 
     asignaciones = ListerCodigosPassiveSerializer(source='assignments',many=True,read_only=True)
+    encargadurias = serializers.SerializerMethodField()
+    total_apn = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -129,8 +131,6 @@ class EmployeePasiveDetailSerializer(serializers.ModelSerializer):
             'apellidos', 
             'profile',
             'fecha_nacimiento',
-            'fechaingresoorganismo',
-            'n_contrato', 
             'sexo',
             'estadoCivil', 
             'correo',
@@ -142,9 +142,12 @@ class EmployeePasiveDetailSerializer(serializers.ModelSerializer):
             'perfil_fisico', 
             'formacion_academica',
             'antecedentes',
+            'contrato',
             'anos_apn', 
             'fecha_actualizacion', 
-            'asignaciones'
+            'asignaciones',
+            'encargadurias',
+            'total_apn'
         ]
     
     def get_datos_vivienda(self, obj):
@@ -167,8 +170,29 @@ class EmployeePasiveDetailSerializer(serializers.ModelSerializer):
     def get_formacion_academica(self, obj):
         academica = obj.formacion_academica_set.first()
         return FormacionAcademicaSerializer(academica).data if academica else None
-    
-    
+
+    def get_antecedentes(self, obj):
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return AntecedentesServicioSerializer(cerrados, many=True).data
+
+    def get_contrato(self, obj):
+        contratos_qs = contratos.objects.filter(
+            antecedente_id__empleado_id=obj
+        ).select_related('antecedente_id', 'politica_id', 'estatus_id')
+        return ContratoSerializer(contratos_qs, many=True).data
+
+    def get_encargadurias(self, obj):
+        from datetime import date
+        from ..serializers.historial_personal_serializers import PrestamoCargoSerializer
+        prestamos = obj.encargadurias_asignadas.filter(
+            fecha_fin__gte=date.today()
+        ).select_related('cargo_encargado', 'motivo', 'estatus')
+        return PrestamoCargoSerializer(prestamos, many=True).data
+
+    def get_total_apn(self, obj):
+        from ..utils.tiempo_servicio import calcular_total_apn
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return calcular_total_apn(cerrados)
     
     # ..........................................................
     

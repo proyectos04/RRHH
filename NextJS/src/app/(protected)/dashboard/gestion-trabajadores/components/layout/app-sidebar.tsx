@@ -16,6 +16,7 @@ import {
   ContactRound,
   DoorOpen,
   FileChartLine,
+  FileSpreadsheet,
   FolderOpenDot,
   Home,
   IdCard,
@@ -26,7 +27,7 @@ import {
   NotebookTabs,
   SignpostBig,
   User,
-  UserPlus
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -223,6 +224,15 @@ const items: MenuItem[] = [
         },
       },
       {
+        title: "Asignar Encargaduría",
+        url: "/dashboard/gestion-trabajadores/movimientos/prestamo-cargo",
+        icon: ArrowRightLeft,
+        permission: {
+          roleAccept: ["ADMINISTRADOR"],
+          departmentAccept: ["RAC"],
+        },
+      },
+      {
         title: "Cambiar Cargo",
         url: "/dashboard/gestion-trabajadores/movimientos/cambiar-codigo",
         icon: BriefcaseConveyorBelt,
@@ -315,6 +325,23 @@ const items: MenuItem[] = [
     icon: FolderOpenDot,
     title: "Retroalimentación",
     url: "/dashboard/gestion-trabajadores/retroalimentacion",
+  },
+  {
+    icon: BookCheck,
+    title: "Autogestión",
+    url: "#",
+    subMenu: [
+      {
+        title: "Formulario",
+        url: "/dashboard/autogestion",
+        icon: BookCheck,
+      },
+      {
+        title: "Respuestas Encuesta",
+        url: "/dashboard/autogestion/consultar",
+        icon: FileSpreadsheet,
+      },
+    ],
   },
 ];
 

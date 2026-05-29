@@ -2,6 +2,7 @@
 import z from "zod";
 import { schemaPasivo } from "../schema/schemaPasivo";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export default async function GestionAction(
@@ -21,30 +22,16 @@ export default async function GestionAction(
       ...values,
       usuario_id: Number.parseInt(session.user.id),
     };
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}historyEmployee/egreso/${employee}/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `historyEmployee/egreso/${employee}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           ...payload,
         }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
-
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-      };
-    }
-    return {
-      success: false,
-      message: getResponse.message,
-    };
+    return { success: data.status === "success", message: data.message };
   } catch {
     return {
       success: false,

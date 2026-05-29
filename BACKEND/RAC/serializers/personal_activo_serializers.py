@@ -4,13 +4,14 @@ from rest_framework import serializers
 
 # importaciones de modelos y utilidades
 from django.db import transaction
+from datetime import date
 from ..models.personal_models import *
 from ..models.historial_personal_models import Tipo_movimiento
 #importacion de servicios
 from ..services.generacion_codigo import generador_codigos, generar_prefijo_nomina 
 from ..serializers.catalogs_serializers import *
 from ..utils.constants import * 
-
+from datetime import date as date_type
 from USER.models.user_models import cuenta as User
 
 from ..services.constants_historial import registrar_historial_movimiento
@@ -18,6 +19,7 @@ from ..services.profile_services import (
     upsert_vivienda, upsert_health_profile, upsert_physical_profile,
     upsert_academic_profile, replace_complementaria,
     replace_contacto_emergencia, replace_antecedentes,
+    upsert_contrato,
 )
 from ..services.dependency_validators import validate_dependency_hierarchy
 
@@ -33,14 +35,12 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
     fecha_nacimiento =serializers.DateField(
         input_formats=['iso-8601', '%Y-%m-%d','%Y-%m-%dT%H:%M:%S.%fZ']
     )
-    fechaingresoorganismo = serializers.DateField(
-        input_formats=['iso-8601', '%Y-%m-%d','%Y-%m-%dT%H:%M:%S.%fZ']
-    )
+    contrato = ContratoSerializer(many=True, required=False, write_only=True)
     datos_vivienda = DatosViviendaSerializer(required=False)
     perfil_salud = PerfilSaludSerializer(required=False)
     contacto_emergencia = ContactoEmergenciaSerializer(many=True, required=False)
     perfil_fisico = PerfilFisicoSerializer(required=False)
-    formacion_academica = FormacionAcademicaSerializer(required=False)
+    formacion_academica = FormacionAcademicaSerializer(many=True,required=False, write_only=True)
     formacion_complementaria = FormacionComplementariaSerializer(many=True,required=False, write_only=True)
     antecedentes = AntecedentesServicioSerializer(many=True, required=False)
     
@@ -60,6 +60,13 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
     
     def validate_nombres(self, value): return value.upper() if value else value
     def validate_apellidos(self, value): return value.upper() if value else value
+
+    def validate_fecha_nacimiento(self, value):
+        hoy = date.today()
+        edad = hoy.year - value.year - ((hoy.month, hoy.day) < (value.month, value.day))
+        if edad <= 15:
+            raise serializers.ValidationError("El empleado debe ser mayor de 15 años.")
+        return value
     
     @transaction.atomic
     def create(self, validated_data):
@@ -95,7 +102,8 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
             'academico': validated_data.pop('formacion_academica', None),
             'complementaria': validated_data.pop('formacion_complementaria', None),
             'contacto_emergencia': validated_data.pop('contacto_emergencia', None),
-            'antecedentes': validated_data.pop('antecedentes', None)
+            'antecedentes': validated_data.pop('antecedentes', None),
+            'contrato': validated_data.pop('contrato', None),
         }
 
     def _handle_nested_data(self, instance, nested):
@@ -106,6 +114,95 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
         replace_complementaria(instance, nested.get('complementaria'))
         replace_contacto_emergencia(instance, nested.get('contacto_emergencia'))
         replace_antecedentes(instance, nested.get('antecedentes'))
+        upsert_contrato(instance, nested.get('contrato'))
+
+    def validate_contrato(self, value):
+        if not value or not self.instance:
+            return value
+        
+        empleado = self.instance
+
+        contratos_existentes = contratos.objects.filter(
+            antecedente_id__empleado_id=empleado
+        )
+        cantidad_actual = contratos_existentes.count()
+
+        for item in value:
+            inicio = item.get('fecha_ingreso')
+            fin = item.get('fecha_culminacion')
+            n_contrato_item = item.get('n_contrato')
+            politica_id = item.get('politica_id')
+
+            es_nuevo = not contratos.objects.filter(n_contrato=n_contrato_item).exists() if n_contrato_item else True
+
+            if es_nuevo:
+                if cantidad_actual >= 3:
+                    raise serializers.ValidationError(
+                        "El trabajador ya tiene 3 contratos registrados. No se pueden crear más contratos."
+                    )
+
+                hoy = date_type.today()
+                contrato_activo = contratos_existentes.filter(
+                    fecha_culminacion__isnull=True
+                ).first() or contratos_existentes.filter(
+                    fecha_culminacion__gte=hoy
+                ).first()
+                if contrato_activo:
+                    raise serializers.ValidationError(
+                        f"El trabajador ya tiene un contrato activo ({contrato_activo.n_contrato}). No se puede crear otro hasta que finalice."
+                    )
+
+                if not n_contrato_item and politica_id:
+                    cedula = str(empleado.cedulaidentidad)
+                    politica = politicas.objects.filter(id=politica_id).first()
+                    inicial = politica.tipo_politica[0].upper() if politica else 'C'
+                    nuevo_numero = cantidad_actual + 1
+                    n_contrato_item = f"{inicial}-{cedula}-{str(nuevo_numero).zfill(2)}"
+                    item['n_contrato'] = n_contrato_item
+
+            if not inicio:
+                continue
+            fin = fin or date_type.today()
+            if fin < inicio:
+                raise serializers.ValidationError(
+                    f"La fecha de culminación no puede ser anterior a la fecha de inicio en el contrato {n_contrato_item}."
+                )
+            qs = contratos.objects.filter(
+                antecedente_id__empleado_id=empleado
+            ).exclude(n_contrato=n_contrato_item)
+            for other in qs:
+                other_inicio = other.fecha_ingreso
+                other_fin = other.fecha_culminacion or date_type.today()
+                if other_inicio and inicio <= other_fin and fin >= other_inicio:
+                    raise serializers.ValidationError(
+                        f"El contrato {n_contrato_item} ({inicio} - {fin}) se solapa con el contrato {other.n_contrato} ({other_inicio} - {other_fin})."
+                    )
+        return value
+
+    def validate_antecedentes(self, value):
+        if not value or not isinstance(value, list):
+            return value
+        hoy = date_type.today()
+        for i, item in enumerate(value):
+            inicio = item.get('fecha_ingreso')
+            fin = item.get('fecha_egreso')
+            if not inicio:
+                continue
+            fin = fin or hoy
+            if fin < inicio:
+                raise serializers.ValidationError(
+                    f"La fecha de egreso no puede ser anterior a la fecha de ingreso en el antecedente {i+1}."
+                )
+            for j, other in enumerate(value):
+                if i == j:
+                    continue
+                other_inicio = other.get('fecha_ingreso')
+                other_fin = other.get('fecha_egreso') or hoy
+                if other_inicio and inicio <= other_fin and fin >= other_inicio:
+                    raise serializers.ValidationError(
+                        f"El antecedente {i+1} ({inicio} - {fin}) se solapa con el antecedente {j+1} ({other_inicio} - {other_fin})."
+                    )
+        return value
                           
 # -------------------------------------------------------------
 # serializers para listar datos personales 
@@ -121,7 +218,8 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     formacion_academica = FormacionAcademicaSerializer(source='formacion_academica_set', many=True, read_only=True)
     formacion_complementaria = FormacionComplementariaSerializer(source='formacion_complementaria_set', many=True, read_only=True)
     
-    antecedentes = AntecedentesServicioSerializer(source='antecedentes_servicio_set', many=True,read_only=True)
+    antecedentes = serializers.SerializerMethodField()
+    contrato = serializers.SerializerMethodField()
     
     
     class Meta:
@@ -132,9 +230,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'nombres', 
             'apellidos',
             'profile',
-            'fecha_nacimiento',
-            'fechaingresoorganismo',
-            'n_contrato', 
+            'fecha_nacimiento',         
             'sexo', 
             'estadoCivil',
             'datos_vivienda',
@@ -144,6 +240,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'formacion_complementaria',
             'contacto_emergencia',
             'antecedentes',
+            'contrato',
             'fecha_actualizacion'
         ]
         
@@ -167,9 +264,20 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     def get_formacion_academica(self, obj):
         academico = obj.formacion_academica_set.first()
         return FormacionAcademicaSerializer(academico).data if academico else None
+
+    def get_antecedentes(self, obj):
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return AntecedentesServicioSerializer(cerrados, many=True).data
+
+    def get_contrato(self, obj):
+        contratos_qs = contratos.objects.filter(
+            antecedente_id__empleado_id=obj
+        ).select_related('antecedente_id', 'politica_id', 'estatus_id')
+        return ContratoSerializer(contratos_qs, many=True).data
     
 
-
+# -------------------------------------------------------------
+# serializers para el registro y actualizacion de datos de cargo
 # -------------------------------------------------------------
 # serializers para el registro y actualizacion de datos de cargo
 # ------------------------------------------------------------- 
@@ -188,7 +296,7 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
             self.fields['codigo'].read_only = True
         else:
             self.fields['OrganismoAdscritoid'].read_only = True
-            self.fields['tipo_comision'].read_only = True
+            self.fields['tipo_procedencia'].read_only = True
              
     def validate_tiponominaid(self, value):
         if not self.instance or self.instance.tiponominaid != value:
@@ -273,7 +381,7 @@ class ListerCodigosSerializer(serializers.ModelSerializer):
     OrganismoAdscrito = OrganismoAdscritoSerializer(
         source='OrganismoAdscritoid', read_only=True
     )
-    tipo_comision = TipoComisionSerializers(read_only=True)
+    tipo_procedencia = TipoProcedenciaSerializers(read_only=True)
     Dependencia = DependenciaSerializer(read_only=True)
     DireccionGeneral = DireccionGeneralSerializer(read_only=True)
     DireccionLinea = DireccionLineaSerializer(read_only=True)
@@ -287,11 +395,10 @@ class ListerCodigosSerializer(serializers.ModelSerializer):
             'codigo',
             'denominacioncargo',
             'denominacioncargoespecifico',
-            'encargaduria',
             'grado',
             'tiponomina',
             'OrganismoAdscrito',
-            'tipo_comision',
+            'tipo_procedencia',
             'Dependencia',
             'DireccionGeneral',
             'DireccionLinea',
@@ -321,7 +428,7 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AsigTrabajo
-        fields = ['employee', 'usuario_id','encargaduria']
+        fields = ['employee', 'usuario_id']
 
     def validate(self, attrs):
         if self.instance and self.instance.employee is not None:
@@ -343,12 +450,9 @@ class EmployeeAssignmentSerializer(serializers.ModelSerializer):
         estatus_activo = validated_data.pop('estatus_activo')
         motivo_ingreso = validated_data.pop('motivo_ingreso')
         nuevo_empleado = validated_data.pop('employee')
-        encargaduria = validated_data.pop('encargaduria', None)
 
         instance.employee = nuevo_empleado
         instance.estatusid = estatus_activo
-        if encargaduria is not None:
-            instance.encargaduria = encargaduria
         instance.save()
 
         registrar_historial_movimiento(
@@ -373,7 +477,7 @@ class SpecialPositionAutoCreateSerializer(CleanZerosMixin, serializers.ModelSeri
 
     class Meta: 
         model = AsigTrabajo
-        exclude = ['Tipo_personal', 'estatusid', 'codigo', 'observaciones','encargaduria']
+        exclude = ['Tipo_personal', 'estatusid', 'codigo', 'observaciones']
 
     def validate_tiponominaid(self, value):
         if not value.requiere_codig:
@@ -438,10 +542,12 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
     formacion_academica = serializers.SerializerMethodField()
     formacion_complementaria = FormacionComplementariaSerializer(source='formacion_complementaria_set', many=True, read_only=True)
     anos_apn = serializers.IntegerField(source='total_anos_apn', read_only=True)
-    antecedentes = AntecedentesServicioSerializer(
-        source='antecedentes_servicio_set', many=True,read_only=True)
+    antecedentes = serializers.SerializerMethodField()
+    contrato = serializers.SerializerMethodField()
 
     asignaciones = ListerCodigosSerializer(source='assignments',many=True,read_only=True)
+    encargadurias = serializers.SerializerMethodField()
+    total_apn = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
@@ -452,8 +558,6 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
             'apellidos', 
             'profile',
             'fecha_nacimiento',
-            'fechaingresoorganismo',
-            'n_contrato', 
             'sexo',
             'estadoCivil', 
             'correo',
@@ -466,9 +570,12 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
             'formacion_academica',
             'formacion_complementaria',
             'antecedentes',
+            'contrato',
             'anos_apn', 
             'fecha_actualizacion', 
-            'asignaciones'
+            'asignaciones',
+            'encargadurias',
+            'total_apn'
         ]
     
     def get_datos_vivienda(self, obj):
@@ -489,10 +596,31 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
     
 
     def get_formacion_academica(self, obj):
-        academica = obj.formacion_academica_set.first()
-        return FormacionAcademicaSerializer(academica).data if academica else None
-    
-    
+        academica = obj.formacion_academica_set.all()
+        return FormacionAcademicaSerializer(academica, many=True).data
+
+    def get_antecedentes(self, obj):
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return AntecedentesServicioSerializer(cerrados, many=True).data
+
+    def get_contrato(self, obj):
+        contratos_qs = contratos.objects.filter(
+            antecedente_id__empleado_id=obj
+        ).select_related('antecedente_id', 'politica_id', 'estatus_id')
+        return ContratoSerializer(contratos_qs, many=True).data
+
+    def get_encargadurias(self, obj):
+        from datetime import date
+        from ..serializers.historial_personal_serializers import PrestamoCargoSerializer
+        prestamos = obj.encargadurias_asignadas.filter(
+            fecha_fin__gte=date.today()
+        ).select_related('cargo_encargado', 'motivo', 'estatus')
+        return PrestamoCargoSerializer(prestamos, many=True).data
+
+    def get_total_apn(self, obj):
+        from ..utils.tiempo_servicio import calcular_total_apn
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return calcular_total_apn(cerrados)
     
     # ..........................................................
     

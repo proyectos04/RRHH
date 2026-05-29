@@ -4,10 +4,10 @@ import {
   ChevronRight,
   Home,
   IdCard,
-  Printer,
   Search,
   BarChart3,
   Palette,
+  BookCheck,
   LucideIcon,
 } from "lucide-react";
 
@@ -91,6 +91,11 @@ const items: MenuItem[] = [
     title: "Plantillas",
     url: "/dashboard/carnetizacion/plantillas",
     icon: Palette,
+  },
+  {
+    title: "Autogestión",
+    url: "/dashboard/autogestion",
+    icon: BookCheck,
   },
 ];
 

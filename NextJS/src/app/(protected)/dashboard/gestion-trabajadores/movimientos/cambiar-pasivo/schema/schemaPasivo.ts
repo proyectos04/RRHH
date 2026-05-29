@@ -7,6 +7,6 @@ export const schemaPasivo = z.object({
     message: "El motivo es requerido",
   }),
   tiponominaid: z.number(),
-  codigo_nuevo: z.string(),
+  codigo_nuevo: z.string().optional(),
   liberar_activos: z.boolean().default(false),
 });

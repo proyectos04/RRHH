@@ -35,7 +35,7 @@ const departments: Department[] = [
   {
     id: "Carnetizacion",
     name: "Carnetización",
-    imageSrc: "/images/departments/datos.jpg",
+    imageSrc: "/images/departments/carnetizacion.png",
     href: "/dashboard/carnetizacion",
     color: "bg-blue-500",
     alt: "Sistema de Carnetización",

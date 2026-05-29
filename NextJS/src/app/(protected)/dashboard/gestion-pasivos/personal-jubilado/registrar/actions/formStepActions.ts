@@ -1,21 +1,21 @@
 "use server";
 import { auth } from "#/auth";
-import { BasicInfoType } from "../schemas/schema-basic-info";
-import { AcademyType } from "../schemas/schema-academic_training";
-import { BackgroundType } from "../schemas/schema-background";
-import { HealthType } from "../schemas/schema-health_profile";
-import { PhysicalProfileType } from "../schemas/schema-physical_profile";
-import { DwellingType } from "../schemas/schema-dwelling";
-import { FamilyEmployeeType } from "../schemas/schema-family_employee";
+import { apiFetch } from "@/lib/api-client";
+import { BasicInfoType } from "@/shared/schemas/employees/register/schema-basic-info";
+import { AcademyType } from "@/shared/schemas/employees/register/schema-academic_training";
+import { BackgroundType } from "@/shared/schemas/employees/register/schema-background";
+import { HealthType } from "@/shared/schemas/employees/register/schema-health_profile";
+import { PhysicalProfileType } from "@/shared/schemas/employees/register/schema-physical_profile";
+import { DwellingType } from "@/shared/schemas/employees/register/schema-dwelling";
 import { ApiResponse } from "@/app/types/types";
+import { createCarrera, createInstitucion, createOrganismoAdscrito } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 export async function registerEmployeeSteps(
   data: BasicInfoType &
     AcademyType &
     BackgroundType &
     HealthType &
     PhysicalProfileType &
-    DwellingType &
-    FamilyEmployeeType,
+    DwellingType,
 ) {
   try {
     const session = await auth();
@@ -30,59 +30,95 @@ export async function registerEmployeeSteps(
     const {
       apellidos,
       cedulaidentidad,
+      carnet_patria,
       datos_vivienda,
       estadoCivil,
       fecha_nacimiento,
-      fechaingresoorganismo,
       file,
       formacion_academica,
-      n_contrato,
       nombres,
       perfil_fisico,
       perfil_salud,
       sexoid,
       antecedentes,
-      familys,
     } = data;
+
+    let formacionAcademicaProcesada = formacion_academica
+      ? await Promise.all(
+          formacion_academica.map(async (item) => {
+            let processed = { ...item };
+
+            if (item.carrera_id === -1 && item.nueva_carrera_nombre?.trim()) {
+              console.log("[registerEmployeeSteps pasivo] creating carrera:", item.nueva_carrera_nombre.trim(), "level:", item.nivel_Academico_id);
+              const result = await createCarrera(
+                item.nueva_carrera_nombre.trim(),
+                item.nivel_Academico_id,
+              );
+              console.log("[registerEmployeeSteps pasivo] createCarrera result:", JSON.stringify(result));
+              if (result.status === "success" && result.data?.id) {
+                processed = { ...processed, carrera_id: result.data.id, nueva_carrera_nombre: undefined };
+              } else {
+                processed = { ...processed, carrera_id: undefined, nueva_carrera_nombre: undefined };
+              }
+            }
+
+            if (item.institucion_id === -1 && item.nueva_institucion_nombre?.trim()) {
+              const result = await createInstitucion(item.nueva_institucion_nombre.trim());
+              if (result.status === "success" && result.data?.id) {
+                processed = { ...processed, institucion_id: result.data.id, nueva_institucion_nombre: undefined };
+              } else {
+                processed = { ...processed, institucion_id: undefined, nueva_institucion_nombre: undefined };
+              }
+            }
+
+            return processed;
+          }),
+        )
+      : [];
+
+    const antecedentesProcesados = antecedentes
+      ? await Promise.all(
+          antecedentes.map(async (item) => {
+            let processed = { ...item };
+            if (item.organismo_id === -1 && item.nuevo_organismo_nombre?.trim()) {
+              const result = await createOrganismoAdscrito(item.nuevo_organismo_nombre.trim());
+              if (result.status === "success" && result.data?.id) {
+                processed = { ...processed, organismo_id: result.data.id, nuevo_organismo_nombre: undefined };
+              } else {
+                processed = { ...processed, organismo_id: undefined, nuevo_organismo_nombre: undefined };
+              }
+            }
+            return processed;
+          }),
+        )
+      : [];
+
     const payloadEmployee = {
       apellidos,
+      carnet_patria,
       cedulaidentidad,
       datos_vivienda,
       estadoCivil,
       fecha_nacimiento,
-      fechaingresoorganismo,
-      profile: file.name,
-      formacion_academica,
-      n_contrato,
+      profile: file?.name ?? null,
+      formacion_academica: formacionAcademicaProcesada,
       nombres,
       perfil_fisico,
       perfil_salud,
       sexoid,
       usuario_id: userId,
-      antecedentes,
+      antecedentes: antecedentesProcesados,
     };
 
-    const payloadFamily = {
-      familys: familys?.map((familiar) => ({
-        ...familiar,
-        usuario_id: userId,
-        employeecedula: cedulaidentidad,
-      })),
-    };
-
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}employees_register/`,
+    const getEmployee = await apiFetch<ApiResponse<never>>(
+      `employees_register/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           ...payloadEmployee,
         }),
       },
     );
-    const getEmployee: ApiResponse<never> = await response.json();
     const formData = new FormData();
     formData.append("file", data.file!);
     const responseNestjs = await fetch(
@@ -94,25 +130,12 @@ export async function registerEmployeeSteps(
       },
     );
 
-    const responseFamily = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}Employeefamily/masivo/`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payloadFamily.familys),
-      },
-    );
-    const getFamily: ApiResponse<never> = await responseFamily.json();
     return {
-      success: response.ok && responseFamily.ok,
+      success: getEmployee.status === "success",
       message:
-        response.ok && responseFamily.ok && responseNestjs.ok
+        getEmployee.status === "success" && responseNestjs.ok
           ? getEmployee.message
-          : getEmployee.message ||
-            getFamily.message ||
-            "Error al registrar empleado",
+          : getEmployee.message || "Error al registrar empleado",
     };
   } catch {
     return {

@@ -126,6 +126,7 @@ export function EmployeeEditModal({
       parroquiaid: 0,
       nivelAcademico: 0,
       direccionExacta: "",
+      carnet_patria: employee.carnet_patria || "",
       fecha_nacimiento: "",
     },
   });
@@ -171,6 +172,26 @@ export function EmployeeEditModal({
                     )}
                   />
                 </div>
+                <div>
+                  <FormField
+                    control={form.control}
+                    name="carnet_patria"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Carnet de la Patria</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="00000000000000000000"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <FormField
                     control={form.control}

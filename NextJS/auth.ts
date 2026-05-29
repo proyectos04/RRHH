@@ -22,6 +22,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.direccionLine = user.direccionLine;
         token.coordination = user.coordination;
         token.dependency = user.dependency;
+
+        token.djAccess = (user as any).djAccess;
+        token.djRefresh = (user as any).djRefresh;
+        token.debeCambiarPassword = (user as any).debeCambiarPassword || false;
       }
       return token;
     },
@@ -36,6 +40,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.direccionLine = token.direccionLine;
         session.user.coordination = token.coordination;
         session.user.dependency = token.dependency;
+        session.user.debeCambiarPassword = token.debeCambiarPassword as boolean;
       }
       return session;
     },

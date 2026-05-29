@@ -3,7 +3,15 @@
 import z from "zod";
 import { schemaFamilyEmployeeOne } from "../schema/schemaCreateFamily";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
+
+interface FamilyCreateResponse {
+  id: number;
+  cedulaFamiliar: string;
+  nombre_completo: string;
+  parentesco: string;
+}
 
 export default async function createFamilyActions(
   values: z.infer<typeof schemaFamilyEmployeeOne>,
@@ -24,33 +32,18 @@ export default async function createFamilyActions(
       ...familyData
     } = values;
 
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}Employeefamily/${id}/`,
+    const getResponse = await apiFetch<ApiResponse<FamilyCreateResponse>>(
+      `Employeefamily/${id}/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...familyData, usuario_id: session.user.id }),
       },
     );
-    interface FamilyCreateResponse {
-      id: number;
-      cedulaFamiliar: string;
-      nombre_completo: string;
-      parentesco: string;
-    }
-    const getResponse: ApiResponse<FamilyCreateResponse> = await response.json();
-    if (response.ok) {
-      return {
-        success: true,
-        message: getResponse.message,
-        data: getResponse.data,
-      };
-    }
+
     return {
-      success: false,
+      success: getResponse.status === "success",
       message: getResponse.message,
+      data: getResponse.data,
     };
   } catch {
     return {

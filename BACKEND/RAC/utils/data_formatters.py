@@ -2,8 +2,12 @@
 
 
 
-
-
+def extract_first_error(errors):
+    if isinstance(errors, dict):
+        return extract_first_error(next(iter(errors.values())))
+    if isinstance(errors, list):
+        return extract_first_error(errors[0])
+    return str(errors)
 
 class CleanZerosMixin:
     def to_internal_value(self, data):

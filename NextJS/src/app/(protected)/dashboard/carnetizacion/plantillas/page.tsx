@@ -2,119 +2,86 @@
 import PageLayout from "@/components/layout/page-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  ImagePlus,
   Loader2,
   Palette,
-  Upload,
   CheckCircle2,
   XCircle,
   Star,
-  FileImage,
+  ImagePlus,
 } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useTransition, useCallback } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import useSWR from "swr";
 import { toast } from "sonner";
+import { getPlantillas } from "../api/getInfoCarnet";
+import { subirPlantilla as subirPlantillaAction, activarPlantilla as activarPlantillaAction } from "./actions/plantillaActions";
+import { schemaPlantilla } from "../schemas/schemaPlantilla";
+import PlantillaUploadForm from "../components/forms/plantilla-upload-form";
+import type { Plantilla } from "../types/carnetizacion";
 
-interface Plantilla {
-  id: number;
-  nombre: string;
-  imagen_url: string | null;
-  activo: boolean;
-  creado: string;
-}
+const DJANGO_URL =
+  process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace("/api/", "") ||
+  "http://localhost:8000";
 
 export default function PlantillasPage() {
-  const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [nombre, setNombre] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPendingUpload, startTransitionUpload] = useTransition();
 
-  const djangoUrl =
-    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace("/api/", "") ||
-    "http://localhost:8000";
+  const { data: plantillas, isLoading, mutate } = useSWR(
+    "plantillas-carnet",
+    getPlantillas,
+  );
 
-  const cargarPlantillas = async () => {
-    try {
-      const res = await fetch(`${djangoUrl}/carnetizacion/api/plantillas/`);
-      const data = await res.json();
-      setPlantillas(data);
-    } catch {
-      toast.error("Error al cargar plantillas");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    cargarPlantillas();
-  }, [djangoUrl]);
+  const form = useForm({
+    resolver: zodResolver(schemaPlantilla),
+    defaultValues: { nombre: "", imagen: undefined },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    form.setValue("imagen", file);
     setFileName(file.name);
     const reader = new FileReader();
     reader.onload = () => setPreview(reader.result as string);
     reader.readAsDataURL(file);
   };
 
-  const subirPlantilla = async () => {
-    if (!nombre.trim()) {
-      toast.error("Debe ingresar un nombre");
-      return;
-    }
-    const file = fileInputRef.current?.files?.[0];
-    if (!file) {
-      toast.error("Debe seleccionar una imagen");
-      return;
-    }
+  const onSubmit = useCallback((values: { nombre: string; imagen: File }) => {
+    startTransitionUpload(async () => {
+      const result = await subirPlantillaAction(values.nombre, values.imagen);
+      if (result.success) {
+        toast.success("Plantilla subida exitosamente");
+        form.reset({ nombre: "", imagen: undefined });
+        setPreview(null);
+        setFileName("");
+        setFileInputKey((k) => k + 1);
+        mutate();
+      } else {
+        toast.error(result.message);
+      }
+    });
+  }, [mutate, form]);
 
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append("nombre", nombre.trim());
-      formData.append("imagen", file);
-
-      const res = await fetch(`${djangoUrl}/carnetizacion/api/plantillas/crear/`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error("Error al subir");
-
-      toast.success("Plantilla subida exitosamente");
-      setNombre("");
-      setPreview(null);
-      setFileName("");
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      await cargarPlantillas();
-    } catch {
-      toast.error("Error al subir la plantilla");
-    } finally {
-      setUploading(false);
-    }
+  const activarPlantilla = (id: number) => {
+    startTransitionUpload(async () => {
+      const result = await activarPlantillaAction(id);
+      if (result.success) {
+        toast.success("Plantilla activada");
+        mutate();
+      } else {
+        toast.error(result.message);
+      }
+    });
   };
 
-  const activarPlantilla = async (id: number) => {
-    try {
-      const res = await fetch(
-        `${djangoUrl}/carnetizacion/api/plantillas/${id}/activar/`,
-        { method: "POST" },
-      );
-      if (!res.ok) throw new Error();
-      toast.success("Plantilla activada");
-      await cargarPlantillas();
-    } catch {
-      toast.error("Error al activar plantilla");
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <PageLayout title="Plantillas">
         <div className="flex justify-center items-center py-20">
@@ -130,7 +97,6 @@ export default function PlantillasPage() {
       description="Administra las plantillas de fondo para los carnets"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-        {/* Formulario de carga */}
         <Card className="shadow-sm lg:col-span-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -139,68 +105,21 @@ export default function PlantillasPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Nombre</label>
-              <Input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Fondo CONATEL 2026"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Imagen (JPG/PNG, máx 5MB)</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-              <div className="flex items-center gap-2 mt-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <FileImage className="h-4 w-4 mr-1" />
-                  Seleccionar Imagen
-                </Button>
-                {fileName && (
-                  <span className="text-sm text-muted-foreground truncate max-w-[180px]">
-                    {fileName}
-                  </span>
-                )}
-              </div>
-            </div>
-            {preview && (
-              <div className="border rounded-md overflow-hidden">
-                <img
-                  src={preview}
-                  alt="Preview"
-                  className="w-full object-cover max-h-40"
-                />
-              </div>
-            )}
-            <Button
-              className="w-full"
-              onClick={subirPlantilla}
-              disabled={uploading}
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
-              )}
-              {uploading ? "Subiendo..." : "Subir Plantilla"}
-            </Button>
+            <PlantillaUploadForm
+              form={form}
+              isPending={isPendingUpload}
+              fileInputKey={fileInputKey}
+              fileInputRef={fileInputRef}
+              preview={preview}
+              fileName={fileName}
+              onFileChange={handleFileChange}
+              onSubmit={onSubmit}
+            />
           </CardContent>
         </Card>
 
-        {/* Lista de plantillas */}
         <div className="lg:col-span-2 space-y-3">
-          {plantillas.length === 0 ? (
+          {!plantillas || plantillas.length === 0 ? (
             <Card className="shadow-sm">
               <CardContent className="text-center py-12">
                 <Palette className="h-14 w-14 mx-auto text-gray-300" />
@@ -213,7 +132,7 @@ export default function PlantillasPage() {
               </CardContent>
             </Card>
           ) : (
-            plantillas.map((p) => (
+            plantillas.map((p: Plantilla) => (
               <Card
                 key={p.id}
                 className={`shadow-sm transition-all ${
@@ -225,7 +144,7 @@ export default function PlantillasPage() {
                     <div className="w-24 h-16 rounded-md overflow-hidden border bg-gray-50 flex-shrink-0">
                       {p.imagen_url ? (
                         <img
-                          src={`${djangoUrl}${p.imagen_url}`}
+                          src={`${DJANGO_URL}${p.imagen_url}`}
                           alt={p.nombre}
                           className="w-full h-full object-cover"
                         />

@@ -3,6 +3,7 @@
 import z from "zod";
 import { schemaCode } from "../schemas/schemaCode";
 import { auth } from "#/auth";
+import { apiFetch } from "@/lib/api-client";
 import { ApiResponse } from "@/app/types/types";
 
 export async function createCodeAction(values: z.infer<typeof schemaCode>) {
@@ -24,26 +25,22 @@ export async function createCodeAction(values: z.infer<typeof schemaCode>) {
       };
     }
     const payload = { ...values, usuario_id: userId };
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}empleados-codigo/`,
+    const data = await apiFetch<ApiResponse<never>>(
+      `empleados-codigo/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({ ...payload }),
       },
     );
-    const getResponse: ApiResponse<never> = await response.json();
-    if (!response.ok) {
+    if (data.status !== "success") {
       return {
         success: false,
-        message: getResponse.message || "Error al crear el código.",
+        message: data.message || "Error al crear el código.",
       };
     }
     return {
       success: true,
-      message: getResponse.message,
+      message: data.message,
     };
   } catch {
     return {

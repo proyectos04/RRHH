@@ -6,7 +6,6 @@ import {
   getStatusEmployee,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import { ApiResponse, EmployeeData } from "@/app/types/types";
-import InputForm from "@/components/input-form";
 import { SelectForm } from "@/components/select-form";
 import {
   Select,
@@ -236,7 +235,6 @@ export function PasivoPasiveForm() {
                             onClick={() =>
                               append({
                                 cedula_familiar: "",
-                                codigo: "",
                               })
                             }
                             type="button"
@@ -246,7 +244,7 @@ export function PasivoPasiveForm() {
                           </Button>
                         </div>
                         <div>
-                          {fields.map((_, i) => (
+                              {fields.map((_, i) => (
                             <div className="flex flex-row gap-2" key={i}>
                               <SelectForm
                                 form={form}
@@ -259,14 +257,6 @@ export function PasivoPasiveForm() {
                                 labelKey={`primer_nombre`}
                                 valueKey="cedulaFamiliar"
                                 classNameItem="grow"
-                              />
-                              <InputForm
-                                form={form}
-                                label="Codigo"
-                                nameInput={`sobrevivientes.${i}.codigo`}
-                                type="text"
-                                placeholder="Codigo"
-                                className="grow"
                               />
                               <Button
                                 variant={"destructive"}

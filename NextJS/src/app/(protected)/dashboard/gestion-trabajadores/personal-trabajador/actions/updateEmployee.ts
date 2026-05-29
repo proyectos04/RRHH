@@ -3,6 +3,7 @@
 import { ApiResponse } from "@/app/types/types";
 import z from "zod";
 import { schemaEmployeeEdit } from "../registrar/schemas/schemaRac";
+import { apiFetch } from "@/lib/api-client";
 
 export async function updateEmployee(
   values: z.infer<typeof schemaEmployeeEdit>,
@@ -16,25 +17,15 @@ export async function updateEmployee(
         message: "Error En Los Campos De Actualizacion",
       };
     }
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}empleados-actualizar/${cedula}/`,
+    const message = await apiFetch<ApiResponse<string>>(
+      `empleados-actualizar/${cedula}/`,
       {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(values),
       },
     );
-    const message: ApiResponse<string> = await response.json();
-    if (!response.ok) {
-      return {
-        success: false,
-        message: message.message,
-      };
-    }
     return {
-      success: true,
+      success: message.status === "success",
       message: message.message,
     };
   } catch {

@@ -16,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import useSWR from "swr";
-import { getCategory, getOrganismosAds } from "../api/getInfoRac";
+import { getCategory, getOrganismosAds, getTipoPrenda, getRegionTalla } from "../api/getInfoRac";
 import {
   disabilityCreateActions,
   disabilityGroup,
@@ -40,6 +40,10 @@ import {
   allergiesGroup,
 } from "./actions/actionsAllergies";
 import { adsCreateActions, adsUpdateActions } from "./actions/actionsAds";
+import { tallaCreateActions } from "./actions/actionsTalla";
+import { regionTallaCreateActions } from "./actions/actionsRegionTalla";
+import { TallaSchema, schemaTalla } from "./schemas/schemaTalla";
+import { RegionTallaSchema, schemaRegionTalla } from "./schemas/schemaRegionTalla";
 import { Sheet } from "lucide-react";
 import { getExcel } from "../../gestion-pasivos/api/getInfoPasive";
 import Link from "next/link";
@@ -59,6 +63,10 @@ export default function FeedBack() {
     useSWR("patologyCategory", async () => getCategory("patologias"));
   const { data: allergiesCategory, isLoading: isLoadingAllergiesCategory } =
     useSWR("allergiesCategory", async () => getCategory("alergias"));
+  const { data: tipoPrendaData, isLoading: isLoadingTipoPrenda } =
+    useSWR("tipoPrenda", async () => getTipoPrenda());
+  const { data: regionTallaData, isLoading: isLoadingRegionTalla } =
+    useSWR("regionTalla", async () => getRegionTalla());
   const formAdsUpdate = useForm<AdsUpdateType>({
     defaultValues: {
       id: 0,
@@ -112,6 +120,20 @@ export default function FeedBack() {
     },
     resolver: zodResolver(schemaDisability),
   });
+  const formTalla = useForm<TallaSchema>({
+    defaultValues: {
+      valor: undefined,
+      tipo_prenda: 0,
+      region: 0,
+    },
+    resolver: zodResolver(schemaTalla),
+  });
+  const formRegionTalla = useForm<RegionTallaSchema>({
+    defaultValues: {
+      codigo: undefined,
+    },
+    resolver: zodResolver(schemaRegionTalla),
+  });
   const onSubmitAds = (values: AdsType) => {
     startTransition(async () => {
       const response = await adsCreateActions(values);
@@ -145,6 +167,26 @@ export default function FeedBack() {
   const onSubmitDisabilityGroup = (values: CategoryGroup) => {
     startTransition(async () => {
       const response = await disabilityGroup(values);
+      if (response.success) {
+        toast.success(response.message);
+      } else {
+        toast.error(response.message);
+      }
+    });
+  };
+  const onSubmitTalla = (values: TallaSchema) => {
+    startTransition(async () => {
+      const response = await tallaCreateActions(values);
+      if (response.success) {
+        toast.success(response.message);
+      } else {
+        toast.error(response.message);
+      }
+    });
+  };
+  const onSubmitRegionTalla = (values: RegionTallaSchema) => {
+    startTransition(async () => {
+      const response = await regionTallaCreateActions(values);
       if (response.success) {
         toast.success(response.message);
       } else {
@@ -209,6 +251,7 @@ export default function FeedBack() {
           <TabsTrigger value="dis">Discapacidades</TabsTrigger>
           <TabsTrigger value="pat">Patologias</TabsTrigger>
           <TabsTrigger value="aler">Alergias</TabsTrigger>
+          <TabsTrigger value="tallas">Tallas</TabsTrigger>
           {/*<TabsTrigger value="retro-beneficio">
             Retroalimentar El Sistema De Beneficios
           </TabsTrigger>*/}
@@ -473,6 +516,78 @@ export default function FeedBack() {
 
                     <Button type="submit" className="w-full">
                       Agregar Alergia
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+        <TabsContent value="tallas">
+          <div className="flex gap-2">
+            <Card className="grow">
+              <CardHeader>
+                <h2 className="text-2xl font-bold">Agregar Nueva Region</h2>
+              </CardHeader>
+              <CardContent>
+                <Form {...formRegionTalla}>
+                  <form
+                    onSubmit={formRegionTalla.handleSubmit(onSubmitRegionTalla)}
+                    className="space-y-3"
+                  >
+                    <InputForm
+                      form={formRegionTalla}
+                      label="Nueva Region"
+                      nameInput="codigo"
+                      type="text"
+                    />
+                    <Button type="submit" className="w-full">
+                      Agregar Region
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+            <Card className="grow">
+              <CardHeader>
+                <h2 className="text-2xl font-bold">Agregar Nueva Talla</h2>
+              </CardHeader>
+              <CardContent>
+                <Form {...formTalla}>
+                  <form
+                    onSubmit={formTalla.handleSubmit(onSubmitTalla)}
+                    className="space-y-3"
+                  >
+                    <SelectForm
+                      Formlabel="Tipo De Prenda"
+                      SelectLabelItem="Tipo De Prenda"
+                      form={formTalla}
+                      isLoading={isLoadingTipoPrenda}
+                      options={tipoPrendaData?.data ?? []}
+                      labelKey="categoria"
+                      valueKey="id"
+                      nameSalect="tipo_prenda"
+                      placeholder="Seleccione un tipo de prenda"
+                    />
+                    <SelectForm
+                      Formlabel="Region"
+                      SelectLabelItem="Region"
+                      form={formTalla}
+                      isLoading={isLoadingRegionTalla}
+                      options={regionTallaData?.data ?? []}
+                      labelKey="codigo"
+                      valueKey="id"
+                      nameSalect="region"
+                      placeholder="Seleccione una region"
+                    />
+                    <InputForm
+                      form={formTalla}
+                      label="Nueva Talla"
+                      nameInput="valor"
+                      type="text"
+                    />
+                    <Button type="submit" className="w-full">
+                      Agregar Talla
                     </Button>
                   </form>
                 </Form>

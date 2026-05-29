@@ -5,6 +5,7 @@ import {
   schemaCreateDependency,
   schemaCreateDirectionAdm,
 } from "../schema/schemaCreateDependency";
+import { apiFetch } from "@/lib/api-client";
 import {
   ApiResponse,
   Coordination,
@@ -25,13 +26,10 @@ export async function CreateDependencyAction(
       };
     }
 
-    const responseDependency = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}dependencia/`,
+    const getDependency = await apiFetch<ApiResponse<Dependency>>(
+      `dependencia/`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify({
           Codigo: values.dependency.Codigo,
           dependencia: values.dependency.dependencia,
@@ -39,8 +37,6 @@ export async function CreateDependencyAction(
       },
     );
 
-    const getDependency: ApiResponse<Dependency> =
-      await responseDependency.json();
     if (
       !values.activeCoordination &&
       !values.activeDirectionLine &&
@@ -51,14 +47,11 @@ export async function CreateDependencyAction(
         message: getDependency.message,
       };
     }
-    if (responseDependency.ok && values.activeDirectionGeneral) {
-      const responseDirectionGeneral = await fetch(
-        `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-direccionGeneral/`,
+    if (getDependency.status === "success" && values.activeDirectionGeneral) {
+      const getDirectionGeneral = await apiFetch<ApiResponse<DireccionGeneral>>(
+        `register-direccionGeneral/`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify({
             Codigo: values.direction_general?.Codigo,
             direccion_general: values.direction_general?.direccion_general,
@@ -66,22 +59,17 @@ export async function CreateDependencyAction(
           }),
         },
       );
-      const getDirectionGeneral: ApiResponse<DireccionGeneral> =
-        await responseDirectionGeneral.json();
       if (values.activeDirectionGeneral && !values.activeDirectionLine) {
         return {
           success: true,
           message: getDirectionGeneral.message,
         };
       }
-      if (responseDirectionGeneral.ok && values.direction_line) {
-        const responseDirectionLinea = await fetch(
-          `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-direccionLinea/`,
+      if (getDirectionGeneral.status === "success" && values.direction_line) {
+        const getDirectionLine = await apiFetch<ApiResponse<DireccionLinea>>(
+          `register-direccionLinea/`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
             body: JSON.stringify({
               Codigo: values.direction_line?.Codigo,
               direccion_linea: values.direction_line?.direccion_linea,
@@ -89,8 +77,6 @@ export async function CreateDependencyAction(
             }),
           },
         );
-        const getDirectionLine: ApiResponse<DireccionLinea> =
-          await responseDirectionLinea.json();
         if (values.activeDirectionLine && !values.activeCoordination) {
           return {
             success: true,
@@ -98,18 +84,15 @@ export async function CreateDependencyAction(
           };
         }
         if (
-          responseDirectionLinea.ok &&
+          getDirectionLine.status === "success" &&
           values.activeCoordination &&
           values.activeDirectionLine &&
           values.activeDirectionGeneral
         ) {
-          const responseCoordination = await fetch(
-            `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}register-Coordinacion/`,
+          const getCoordination = await apiFetch<ApiResponse<Coordination>>(
+            `register-Coordinacion/`,
             {
               method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
               body: JSON.stringify({
                 Codigo: values.coordination?.Codigo,
                 coordinacion: values.coordination?.coordinacion,
@@ -117,8 +100,6 @@ export async function CreateDependencyAction(
               }),
             },
           );
-          const getCoordination: ApiResponse<Coordination> =
-            await responseCoordination.json();
           return {
             success: true,
             message: getCoordination.message,

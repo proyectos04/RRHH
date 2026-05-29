@@ -118,15 +118,15 @@ const items: MenuItem[] = [
     url: "#",
     icon: Badge,
     subMenu: [
-      {
-        title: "Crear Nuevo Código",
-        url: "/dashboard/gestion-pasivos/cargos/crear-codigo",
-        icon: BadgePlus,
-        permission: {
-          roleAccept: ["ADMINISTRADOR"],
-          departmentAccept: ["RAC"],
-        },
-      },
+      // {
+      //   title: "Crear Nuevo Código",
+      //   url: "/dashboard/gestion-pasivos/cargos/crear-codigo",
+      //   icon: BadgePlus,
+      //   permission: {
+      //     roleAccept: ["ADMINISTRADOR"],
+      //     departmentAccept: ["RAC"],
+      //   },
+      // },
       {
         title: "Consultar/Actualizar",
         url: "/dashboard/gestion-pasivos/cargos/listado-codigo",
@@ -186,6 +186,11 @@ const items: MenuItem[] = [
         },
       },
     ],
+  },
+  {
+    icon: BookCheck,
+    title: "Autogestión",
+    url: "/dashboard/autogestion",
   },
 ];
 

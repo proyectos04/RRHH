@@ -34,12 +34,13 @@ import {
 import Image from "next/image";
 import { useMemo } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import FormUpdateAcademyLevel from "./updateInfo/forms/form-academic_training";
-import FormUpdateBackground from "./updateInfo/forms/form-background";
-import { FormBasicUpdateInfo } from "./updateInfo/forms/form-basic-info";
-import FormUpdateDwelling from "./updateInfo/forms/form-dwelling";
-import FormUpdateHealth from "./updateInfo/forms/form-health_profile";
-import FormUpdatePhysical from "./updateInfo/forms/form-physical_profile";
+import FormUpdateAcademyLevel from "@/shared/forms/employees/update/form-academic_training";
+import FormUpdateBackground from "@/shared/forms/employees/update/form-background";
+import { FormBasicUpdateInfo } from "@/shared/forms/employees/update/form-basic-info";
+import FormUpdateDwelling from "@/shared/forms/employees/update/form-dwelling";
+import FormUpdateHealth from "@/shared/forms/employees/update/form-health_profile";
+import FormUpdatePhysical from "@/shared/forms/employees/update/form-physical_profile";
+import updateInfoEmployee from "./updateInfo/actions/update-info";
 interface Props {
   employee: EmployeeData;
 }
@@ -89,14 +90,13 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 </DialogTrigger>
                 <DialogContent>
                   <FormBasicUpdateInfo
-                    mutate={mutate}
+                    mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                     idEmployee={employee.id.toString()}
                     cedulaidentidad={employee.cedulaidentidad}
                     defaultValues={{
                       apellidos: employee.apellidos,
                       estadoCivil: employee.estadoCivil.id,
                       fecha_nacimiento: new Date(employee.fecha_nacimiento),
-                      n_contrato: employee.n_contrato,
                       nombres: employee.nombres,
                       sexoid: employee.sexo.id,
                       file: undefined,
@@ -209,7 +209,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                             </TableCell>
 
                             <TableCell className="truncate max-w-[200px]">
-                              {v.institucion}
+                              {v.organismo?.Organismoadscrito ?? "N/A"}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -235,22 +235,20 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 </DialogTrigger>
                 <DialogContent>
                   <FormUpdateBackground
-                    mutate={mutate}
+                    mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                     idEmployee={employee.id.toString()}
                     defaultValues={{
-                      fechaingresoorganismo: new Date(
-                        employee.fechaingresoorganismo,
-                      ),
-                      antecedentes:
-                        employee.antecedentes?.map((ant) => ({
-                          institucion: ant.institucion ?? undefined,
+                      antecedentes: employee.antecedentes?.length
+                        ? employee.antecedentes.map((ant) => ({
+                          organismo_id: ant.organismo?.id ?? undefined,
                           fecha_ingreso: ant.fecha_ingreso
                             ? new Date(ant.fecha_ingreso)
                             : undefined,
                           fecha_egreso: ant.fecha_egreso
                             ? new Date(ant.fecha_egreso)
                             : undefined,
-                        })) ?? [],
+                        }))
+                        : [],
                     }}
                   />
                 </DialogContent>
@@ -274,7 +272,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     </DialogTrigger>
                     <DialogContent>
                       <FormUpdateDwelling
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                         idEmployee={employee.id.toString()}
                       />
                     </DialogContent>
@@ -301,6 +299,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                   <div>
                     {employee.datos_vivienda?.direccion_exacta ?? "N/A"}
                   </div>
+                  <div>Código Postal:</div>
+                  <div>
+                    {employee.datos_vivienda?.codigo_postal ?? "N/A"}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -321,10 +323,19 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     </DialogTrigger>
                     <DialogContent>
                       <FormUpdateAcademyLevel
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                         idEmployee={employee.id.toString()}
                         defaultValues={{
-                          formacion_academica: employee.formacion_academica,
+                          formacion_academica:
+                            employee.formacion_academica?.length
+                              ? employee.formacion_academica.map((fa) => ({
+                                  nivel_Academico_id:
+                                    fa.nivelAcademico?.id ?? 0,
+                                  carrera_id: fa.carrera?.id ?? 0,
+                                  mencion_id: fa.mencion?.id ?? 0,
+                                  institucion_id: fa.institucion?.id ?? 0,
+                                }))
+                              : [],
                         }}
                       />
                     </DialogContent>
@@ -335,27 +346,27 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 <div className="grid grid-cols-2 place-content-center">
                   <div>Nivel Academico:</div>
                   <div>
-                    {employee.formacion_academica?.nivelAcademico
+                    {employee.formacion_academica?.[0]?.nivelAcademico
                       ?.nivelacademico ?? "N/A"}
                   </div>
                   <div>Carrera:</div>
                   <div>
-                    {employee.formacion_academica?.carrera?.nombre_carrera ??
+                    {employee.formacion_academica?.[0]?.carrera?.nombre_carrera ??
                       "N/A"}
                   </div>
                   <div>Mención:</div>
                   <div>
-                    {employee.formacion_academica?.mension?.nombre_mencion ??
+                    {employee.formacion_academica?.[0]?.mencion?.nombre_mencion ??
                       "N/A"}
                   </div>
                   <div>Institución:</div>
                   <div>
-                    {employee.formacion_academica?.institucion ?? "N/A"}
+                    {employee.formacion_academica?.[0]?.institucion?.nombre_institucion ?? "N/A"}
                   </div>
 
                   <div>Capacitación</div>
                   <div>
-                    {employee.formacion_academica?.capacitacion ?? "N/A"}
+                    {employee.formacion_academica?.[0]?.capacitacion?.nombre_capacitacion ?? "N/A"}
                   </div>
                 </div>
               </CardContent>
@@ -378,7 +389,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     </DialogTrigger>
                     <DialogContent>
                       <FormUpdatePhysical
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                         idEmployee={employee.id.toString()}
                         defaultValues={{
                           perfil_fisico: {
@@ -400,19 +411,23 @@ export default function DetailInfoEmployee({ employee }: Props) {
                 <div className="grid grid-cols-2 place-content-center">
                   <div>Talla De Camisa:</div>
                   <div>
-                    {employee.perfil_fisico?.tallaCamisa?.talla ?? "N/A"}
+                    {employee.perfil_fisico?.tallaCamisa?.valor ?? "N/A"}
                   </div>
                   <div>Talla de Pantalon:</div>
                   <div>
                     <div>
-                      {employee.perfil_fisico?.tallaPantalon?.talla ?? "N/A"}
+                      {employee.perfil_fisico?.tallaPantalon?.valor ?? "N/A"}
                     </div>
                   </div>
                   <div>Talla De Calzado:</div>
                   <div>
                     <div>
-                      {employee.perfil_fisico?.tallaZapatos?.talla ?? "N/A"}
+                      {employee.perfil_fisico?.tallaZapatos?.valor ?? "N/A"}
                     </div>
+                  </div>
+                  <div>Talla De Chaqueta:</div>
+                  <div>
+                    {employee.perfil_fisico?.tallaChaqueta?.valor ?? "N/A"}
                   </div>
                 </div>
               </CardContent>
@@ -435,7 +450,7 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     </DialogTrigger>
                     <DialogContent>
                       <FormUpdateHealth
-                        mutate={mutate}
+                        mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                         idEmployee={employee.id.toString()}
                         defaultValues={{
                           perfil_salud: {

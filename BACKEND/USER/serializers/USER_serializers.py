@@ -2,7 +2,6 @@ from rest_framework import serializers
 from USER.models import  *
 from RAC.models import *
 from RAC.serializers.personal_activo_serializers import CleanZerosMixin
-from django.contrib.auth.hashers import check_password, make_password
 
 
 
@@ -28,14 +27,20 @@ class CuentaSerializer(serializers.ModelSerializer):
     direccion_linea = serializers.SerializerMethodField()
     coordinacion = serializers.SerializerMethodField()
     dependencia = serializers.SerializerMethodField()
+    debe_cambiar_password = serializers.SerializerMethodField()
 
     class Meta:
         model = cuenta
         fields = [
             'id', 'cedula', 'nombres', 'apellidos', 
             'correo', 'telefono', 'departamento', 'rol', 'is_active',
-            'dependencia', 'direccion_general', 'direccion_linea', 'coordinacion'
+            'dependencia', 'direccion_general', 'direccion_linea', 'coordinacion',
+            'debe_cambiar_password'
         ]
+
+    def get_debe_cambiar_password(self, obj):
+        # Devuelve True si la contraseña es igual a la cédula (contraseña por defecto)
+        return obj.check_password(obj.cedula.cedulaidentidad)
 
     def _get_asignacion(self, obj):
         if not hasattr(self, '_cached_asig'):
@@ -82,18 +87,18 @@ class CuentaSerializer(serializers.ModelSerializer):
  
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=True)
-    cedula= serializers.CharField(write_only=True, required=True)
+    correo = serializers.EmailField(write_only=True, required=True)
 
     class Meta:
         model = cuenta
-        fields = ['cedula', 'password', 'departamento', 'rol']
+        fields = ['correo', 'password', 'departamento', 'rol']
 
-    def validate_cedula(self, value):
-        cedula_str = str(value).strip()
+    def validate_correo(self, value):
+        correo_str = str(value).strip().lower()
         try:
-            empleado = Employee.objects.get(cedulaidentidad__iexact=cedula_str)
+            empleado = Employee.objects.get(correo__iexact=correo_str)
         except Employee.DoesNotExist:
-            raise serializers.ValidationError("La cédula no pertenece a un empleado registrado en RAC.")
+            raise serializers.ValidationError("El correo electrónico no pertenece a ningún empleado registrado en RAC.")
         
         if cuenta.objects.filter(cedula=empleado).exists():
             raise serializers.ValidationError("Este empleado ya posee una cuenta de usuario.")
@@ -101,12 +106,14 @@ class RegisterSerializer(serializers.ModelSerializer):
         return empleado
 
     def create(self, validated_data):
-        empleado = validated_data.pop('cedula')
+        empleado = validated_data.pop('correo')
+        password = validated_data.pop('password')
         
-        validated_data['cedula'] = empleado
-        validated_data['password'] = make_password(validated_data['password'])
+        user = cuenta(cedula=empleado, **validated_data)
+        user.set_password(password)
+        user.save()
+        return user
 
-        return cuenta.objects.create(**validated_data) 
 class UpdateCuentaSerializer(CleanZerosMixin,serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, style={'input_type': 'password'})
 
@@ -116,7 +123,7 @@ class UpdateCuentaSerializer(CleanZerosMixin,serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         if 'password' in validated_data:
-            instance.password = make_password(validated_data.pop('password'))
+            instance.set_password(validated_data.pop('password'))
         
         instance.departamento = validated_data.get('departamento', instance.departamento)
         instance.rol = validated_data.get('rol', instance.rol)
@@ -142,24 +149,20 @@ class CambiarEstadoCuentaSerializer(serializers.ModelSerializer):
         return instance
 
 class LoginSerializer(serializers.Serializer):
-    cedula= serializers.CharField(required=True)
+    correo = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True, style={'input_type': 'password'})
 
     def validate(self, data):
-        cedula_input = data.get('cedula')
+        correo_input = data.get('correo')
         password_input = data.get('password')
 
         try:
-            usuario = cuenta.objects.select_related('cedula', 'departamento', 'rol').get(cedula__cedulaidentidad=cedula_input)
+            usuario = cuenta.objects.select_related('cedula', 'departamento', 'rol').get(cedula__correo__iexact=correo_input)
         except cuenta.DoesNotExist:
             raise serializers.ValidationError("Usuario o contraseña inválidos")
 
-        if not check_password(password_input, usuario.password):
-            if usuario.password == password_input:
-                usuario.password = make_password(password_input)
-                usuario.save()
-            else:
-                raise serializers.ValidationError("Usuario o contraseña inválidos")
+        if not usuario.check_password(password_input):
+            raise serializers.ValidationError("Usuario o contraseña inválidos")
 
         if not usuario.is_active:
             raise serializers.ValidationError("Esta cuenta se encuentra inactiva.")

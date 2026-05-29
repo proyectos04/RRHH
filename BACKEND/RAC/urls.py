@@ -40,6 +40,9 @@ urlpatterns = [
     path('listar-tallasCamisas/', views.list_shirt_sizes, name='listar tallas de camisa'),
     path('listar-tallaPantalones/',views.list_pant_sizes, name='listar tallas de pantalones'),
     path('listar-tallaZapatos/', views.list_shoe_sizes, name='listar tallas de Zapatos'),
+    path('listar-tallas/', views.list_tallas, name='listar-tallas'),
+    path('listar-tipo-prenda/', views.list_tipo_prenda, name='listar-tipo-prenda'),
+    path('listar-region-talla/', views.list_region_talla, name='listar-region-talla'),
     
     
     # --------------------
@@ -48,8 +51,13 @@ urlpatterns = [
     path('listar-nivel-academico/', views.list_academic_levels, name='listar-nivel-academico'),
     path('Menciones/<int:carrera_id>/', views.list_career_specializations, name='listar-menciones'),
     path('carreras/', views.list_careers, name='listar-carreras'),
+    path('carreras/create/', views.create_carrera, name='crear-carrera'),
+    path('carreras/<int:nivel_academico_id>/', views.list_careers, name='listar-carreras-por-nivel'),
     path('instituciones/', views.list_institutions, name='listar-instituciones'),
     path('institucion/', views.create_Institucion, name='crear-instituciones'),
+    path('capacitaciones/', views.list_capacitaciones, name='listar-capacitaciones'),
+    path('capacitacion/', views.create_Capacitacion, name='crear-capacitacion'),
+    path('grupos-capacitacion/', views.list_grupos_capacitacion, name='listar-grupos-capacitacion'),
 
 
     
@@ -69,6 +77,7 @@ urlpatterns = [
     # DATOS PERFIL
     # --------------------
     path('listar-sexo/',views.list_genders, name='listar-sexo'),
+    path('listar-politicas/',views.list_politicas, name='listar-politicas'),
     path('listar-estadoCivil/',views.list_marital_statuses, name='listar-estadoCivil'),
     
   
@@ -154,7 +163,7 @@ urlpatterns = [
    path('OrganismoAdscrito/<int:id>/',views.update_organism, name= 'actualizacion-organismo-adscrito'),
    path('organismos-adscritos/', views.list_subsidiary_organisms, name='lista de organismos adscritos'),
    path('organismos-adscritos/padre/', views.list_subsidiary_organisms_report, name="listar-organismos-repors"),
-   path('tiposComision/', views.list_types_comision, name="listar-tipos-comision"),
+   path('tiposProcedencia/', views.list_types_comision, name="listar-tipos-procedencia"),
 
     
   
@@ -213,5 +222,14 @@ urlpatterns = [
     path('carga/cargos/', views.ImportarCargosESPECIALESView.as_view(), name="carga-trabajador-masiva"),
     path('carga/trabajador/', views.ImportFullEmployeeDataView.as_view(), name="carga-trabajador-masiva"),
     path('carga/familiares/',views.ImportFullFamilyDataView.as_view(), name="carga_masiva_familiares"),
+
+    # --------------------
+    # PRESTAMO DE CARGO (ENCARGADURIA)
+    # --------------------
+    path('prestamo-cargo/', views.create_prestamo_cargo, name='crear-prestamo-cargo'),
+    path('prestamo-cargo/list/', views.list_prestamo_cargo, name='listar-prestamo-cargo'),
+    path('prestamo-cargo/<int:id>/', views.update_prestamo_cargo, name='actualizar-prestamo-cargo'),
+    path('motivos/encargaduria/', views.list_motivos_encargaduria, name='listar-motivos-encargaduria'),
+    path('motivos/encargaduria/create/', views.create_motivo_encargaduria, name='crear-motivo-encargaduria'),
     
 ]

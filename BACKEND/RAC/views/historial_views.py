@@ -8,6 +8,7 @@ from ..models.historial_personal_models import EmployeeMovementHistory, Employee
 from ..models.personal_models import Employee,AsigTrabajo
 from ..serializers.historial_personal_serializers import MovimintoCargoSerializer,GestionStatusSerializer,GestionEgreso_PasivoSerializer,EmployeeCargoHistorySerializer, TipoMovimientoSerializer
 from drf_spectacular.utils import extend_schema
+from ..utils.data_formatters import extract_first_error
 
 
 
@@ -40,7 +41,7 @@ def cambiar_cargo(request, cargo_id):
         try:
             puesto_nuevo = serializer.save()
             return Response({
-                "status": "Ok",
+                "status": "success",
                 "message": "Movimiento registrado correctamente",
                 "data": {
                     "nuevo_puesto": puesto_nuevo.codigo,
@@ -53,9 +54,7 @@ def cambiar_cargo(request, cargo_id):
                 "message": f"Error en la operación: {str(e)}",
                 "data": []
             }, status=status.HTTP_400_BAD_REQUEST)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
 
     return Response({
         "status": "Error",
@@ -89,7 +88,7 @@ def gestionar_estatus_puesto(request, cargo_id):
         try:
             serializer.save()
             return Response({
-                "status": "Ok",
+                "status": "success",
                 "message": "El estatus ha sido actualizado exitosamente",
                 "data": {
                     "codigo": puesto.codigo,
@@ -102,9 +101,7 @@ def gestionar_estatus_puesto(request, cargo_id):
                 "message": f"Error al procesar el cambio de estatus: {str(e)}",
                 "data": []
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
 
     return Response({
         "status": "Error",
@@ -135,7 +132,7 @@ def gestion_egreso_pasivo(request, cedulaidentidad):
         try:
             serializer.save()
             return Response({
-                "status": "Ok",
+                "status": "success",
                 "message": "Gestion realizada exitosamente",
                 "data": {
                     "empleado_id": empleado.id,
@@ -149,9 +146,7 @@ def gestion_egreso_pasivo(request, cedulaidentidad):
                 "message": f"Error al procesar el movimiento: {str(e)}",
                 "data": []
             }, status=status.HTTP_400_BAD_REQUEST)
-    error_dict = serializer.errors
-    first_error_field = list(error_dict.values())[0]
-    clean_message = first_error_field[0] if isinstance(first_error_field, list) else first_error_field
+    clean_message = extract_first_error(serializer.errors)
     return Response({
         "status": "Error",
         "message": clean_message,
@@ -194,12 +189,12 @@ def listar_historial_cargo(request, cedulaidentidad):
     serializer = EmployeeCargoHistorySerializer(movimientos, many=True)
     if not serializer.data:
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "El empleado no posee historial de movimientos o cambios de estatus",
             "data": []
         }, status=status.HTTP_200_OK)
     return Response({
-        "status": "Ok",
+        "status": "success",
         "message": "Historial listado correctamente",
         "data": serializer.data
     }, status=status.HTTP_200_OK)
@@ -230,7 +225,7 @@ def reporte_movimientos(request):
         
         return Response(
             { 
-                'status':'OK',
+                'status':'success',
                 'message': 'Reporte de movimientos generado correctamente',
                 'data': data_final, 
             },
@@ -261,7 +256,7 @@ def listar_motivos_fallecimiento(request):
         serializer = TipoMovimientoSerializer(queryset, many=True)
         
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "Motivos de egreso listados correctamente",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
@@ -289,7 +284,7 @@ def listar_motivos_egreso(request):
         serializer = TipoMovimientoSerializer(queryset, many=True)
         
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "Motivos de egreso listados correctamente",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
@@ -317,7 +312,7 @@ def listar_motivos_internos(request):
         serializer = TipoMovimientoSerializer(queryset, many=True)
         
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "Motivos para realizar moviminetos listados correctamente",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
@@ -343,7 +338,7 @@ def listar_suspendido(request):
         serializer = TipoMovimientoSerializer(queryset, many=True)
         
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "Motivos para cambiar estatus listados correctamente",
             "data": serializer.data
         }, status=status.HTTP_200_OK)
@@ -369,7 +364,7 @@ def listar_suspendido_pasivo(request):
         serializer = TipoMovimientoSerializer(queryset, many=True)
         
         return Response({
-            "status": "Ok",
+            "status": "success",
             "message": "Motivos para cambiar estatus listados correctamente",
             "data": serializer.data
         }, status=status.HTTP_200_OK)

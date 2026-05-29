@@ -60,15 +60,61 @@ export const schemaFamilyEmployeeOne = z.object({
       tallaZapatos: z.number({
         message: "Debe seleccionar una talla de zapatos",
       }),
+      tallaChaqueta: z.number({
+        message: "Debe seleccionar una talla de chaqueta",
+      }).optional(),
     })
     .optional(),
   formacion_academica_familiar: z.object({
     nivel_Academico_id: z.number(),
     carrera_id: z.number().optional(),
+    nueva_carrera_nombre: z.string().optional(),
     mencion_id: z.number().optional(),
+    nueva_mencion_nombre: z.string().optional(),
+    institucion_id: z.number().optional(),
+    nueva_institucion_nombre: z.string().optional(),
     capacitacion: z.string().optional(),
-    institucion: z.string().optional(),
-  }),
+  })
+  .refine(
+    (data) => {
+      if (data.carrera_id === -1 && !data.nueva_carrera_nombre?.trim()) {
+        return false;
+      }
+      return true;
+    },
+    { message: "Debe escribir el nombre de la nueva carrera", path: ["nueva_carrera_nombre"] },
+  )
+  .refine(
+    (data) => {
+      if (data.mencion_id === -1 && !data.nueva_mencion_nombre?.trim()) {
+        return false;
+      }
+      return true;
+    },
+    { message: "Debe escribir el nombre de la nueva mención", path: ["nueva_mencion_nombre"] },
+  )
+  .refine(
+    (data) => {
+      if (data.institucion_id === -1 && !data.nueva_institucion_nombre?.trim()) {
+        return false;
+      }
+      return true;
+    },
+    { message: "Debe escribir el nombre de la nueva institución", path: ["nueva_institucion_nombre"] },
+  )
+  .refine(
+    (data) => {
+      if (data.carrera_id != null && data.carrera_id > 0) {
+        const hasInstitucion = data.institucion_id != null && data.institucion_id > 0;
+        const hasNewInstitucion = data.institucion_id === -1 && data.nueva_institucion_nombre?.trim();
+        if (!hasInstitucion && !hasNewInstitucion) {
+          return false;
+        }
+      }
+      return true;
+    },
+    { message: "Debe seleccionar una institución", path: ["institucion_id"] },
+  ),
   orden_hijo: z.number().optional(),
 });
 

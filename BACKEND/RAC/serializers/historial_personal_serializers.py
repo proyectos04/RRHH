@@ -107,10 +107,16 @@ class GestionStatusSerializer(BaseActionInputSerializer):
     motivo = serializers.PrimaryKeyRelatedField(queryset=Tipo_movimiento.objects.all())
 
     def validate_estatus_id(self, value):
- 
         if value.estatus.upper() not in ESTATUS_PERMITIDOS:
             raise serializers.ValidationError("Gestión de estatus no permitido")
         return value
+
+    def validate(self, attrs):
+        if self.instance and self.instance.estatusid == attrs.get('estatus'):
+            raise serializers.ValidationError(
+                {"estatus_id": f"El cargo ya se encuentra en estatus '{self.instance.estatusid.estatus}'"}
+            )
+        return attrs
 
     @transaction.atomic
     def update(self, instance, validated_data):
@@ -309,3 +315,55 @@ class EmployeeCargoHistorySerializer(serializers.ModelSerializer):
         })
 
         return representation
+
+
+class PrestamoCargoSerializer(serializers.ModelSerializer):
+    cargo_info = ListerCodigosSerializer(source='cargo_encargado', read_only=True)
+    motivo_nombre = serializers.CharField(source='motivo.movimiento', read_only=True)
+    estatus_nombre = serializers.CharField(source='estatus.estatus', read_only=True)
+    empleado_nombre = serializers.SerializerMethodField()
+    empleado_cedula = serializers.SerializerMethodField()
+    titular_nombre = serializers.SerializerMethodField()
+    titular_cedula = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PrestamoCargo
+        fields = '__all__'
+
+    def get_empleado_nombre(self, obj):
+        emp = obj.empleado_encargado
+        return f"{emp.nombres} {emp.apellidos}" if emp else None
+
+    def get_empleado_cedula(self, obj):
+        emp = obj.empleado_encargado
+        return emp.cedulaidentidad if emp else None
+
+    def get_titular_nombre(self, obj):
+        emp = obj.cargo_encargado.employee
+        return f"{emp.nombres} {emp.apellidos}" if emp else None
+
+    def get_titular_cedula(self, obj):
+        emp = obj.cargo_encargado.employee
+        return emp.cedulaidentidad if emp else None
+
+
+class PrestamoCargoCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrestamoCargo
+        fields = [
+            'empleado_encargado', 'cargo_encargado', 'motivo',
+            'fecha_inicio', 'fecha_fin', 'ejecutado_por'
+        ]
+
+    def validate(self, data):
+        if data['fecha_fin'] < data['fecha_inicio']:
+            raise serializers.ValidationError(
+                {'fecha_fin': 'La fecha de fin no puede ser anterior a la fecha de inicio'}
+            )
+        return data
+
+
+class PrestamoCargoUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrestamoCargo
+        fields = ['fecha_fin', 'motivo']

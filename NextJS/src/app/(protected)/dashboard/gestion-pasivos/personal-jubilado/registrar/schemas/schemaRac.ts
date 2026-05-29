@@ -9,9 +9,7 @@ export const schemaRac = z.object({
   apellidos: z.string(),
   fecha_nacimiento: z.date(),
   file: z.instanceof(File).nullable(),
-  fechaingresoorganismo: z.date(),
   fechaingresoapn: z.date(),
-  n_contrato: z.string(),
   vivienda: z.boolean().default(false),
   direccionExacta: z.string(),
   sexoid: z.number(),
@@ -40,6 +38,7 @@ export const schemaEmployeeEdit = z.object({
   nivelAcademico: z.number(),
   parroquiaid: z.number(),
   direccionExacta: z.string(),
+  carnet_patria: z.string().optional(),
   fecha_nacimiento: z
     .date()
     .or(z.string())

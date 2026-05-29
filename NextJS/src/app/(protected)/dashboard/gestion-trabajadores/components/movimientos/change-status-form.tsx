@@ -7,7 +7,7 @@ import {
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import ChangeStatusAction from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/cambiar-estatus/actions/actions-change-status";
 import { schemaStatusChange } from "@/app/(protected)/dashboard/gestion-trabajadores/movimientos/cambiar-estatus/schema/schemaChangeStatus";
-import { ApiResponse, EmployeeData } from "@/app/types/types";
+import { EmployeeData } from "@/app/types/types";
 import {
   Select,
   SelectContent,
@@ -16,12 +16,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CircleAlert, Search } from "lucide-react";
-import { useState, useTransition } from "react";
+import z from "zod";
+import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import useSWR from "swr";
-import z from "zod";
 import { Button } from "../../../../../../components/ui/button";
 import {
   Card,
@@ -36,18 +35,12 @@ import {
   FormLabel,
   FormMessage,
 } from "../../../../../../components/ui/form";
-import { Input } from "../../../../../../components/ui/input";
-import { Label } from "../../../../../../components/ui/label";
-import { Spinner } from "../../../../../../components/ui/spinner";
 import Error from "../error/error";
+import EmployeeSearchForm from "../employees/employee-search-form";
+import { EmployeeInfoBanner } from "@/shared/components/employee-info-banner";
+import { useEmployeeSearch } from "@/shared/hooks/useEmployeeSearch";
 export function ChangeStatusForm() {
-  const [searchEmployee, setSearchEmployee] = useState<string | undefined>(
-    undefined,
-  );
-  const [isLoading, setIsloading] = useState<boolean>(false);
-
   const [isPending, startTransition] = useTransition();
-  const [employee, setEmployee] = useState<EmployeeData>();
 
   const { data: statusNomina, isLoading: isLoadingStatusNomina } = useSWR(
     "statusNomina",
@@ -66,28 +59,17 @@ export function ChangeStatusForm() {
     },
   });
 
-  const schemaSearchEmployee = z.object({
-    searchEmployeeForm: z.string(),
-  });
-  const handleSearch = async (values: z.infer<typeof schemaSearchEmployee>) => {
-    if (!values.searchEmployeeForm) return;
-    const response = await getEmployeeById(values.searchEmployeeForm);
-    if (response.data && response.data !== undefined) {
-      setEmployee(response.data);
-    }
-  };
-  const formSearch = useForm({
-    defaultValues: {
-      searchEmployeeForm: "",
-    },
-    resolver: zodResolver(schemaSearchEmployee),
-  });
+  const { employee, isLoading, hasSearched, search, clear } =
+    useEmployeeSearch<EmployeeData>({
+      searchFn: getEmployeeById,
+    });
+
   const onSubmit = (data: z.infer<typeof schemaStatusChange>) => {
     startTransition(async () => {
       const response = await ChangeStatusAction(data);
       if (response.success) {
         toast.success(response.message);
-        setSearchEmployee("");
+        clear();
         form.reset({
           cargo: 0,
           estatus_id: 0,
@@ -104,51 +86,22 @@ export function ChangeStatusForm() {
       <Card>
         <CardHeader></CardHeader>
         <CardContent className="space-y-5">
-          <Form {...formSearch}>
-            <form
-              className="flex flex-row justify-between  gap-2"
-              onSubmit={formSearch.handleSubmit(handleSearch)}
-            >
-              <FormField
-                name="searchEmployeeForm"
-                control={formSearch.control}
-                render={({ field }) => (
-                  <FormItem className="flex-1 ">
-                    <FormLabel>Buscar Trabajador</FormLabel>
-                    <FormControl>
-                      <Input placeholder="00000000" type="number" {...field} />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <Button className="self-baseline-last cursor-pointer">
-                <Search className="h-4 w-4" />
-              </Button>
-            </form>
-          </Form>
-          {employee && (
-            <div className={` rounded-sm p-2 `}>
-              {!Array.isArray(employee) ? (
-                <div className="flex flex-row gap-2  border-2 border-blue-400/45 bg-blue-200/40 p-2 rounded-sm">
-                  <p>Nombres: {employee.nombres}</p>
-                  <p>Cedula: {employee.cedulaidentidad}</p>
-                </div>
-              ) : (
-                <Error errorMessage="Cédula Invalida" />
-              )}
-            </div>
-          )}
+          <EmployeeSearchForm onSearch={search} />
 
-          {employee && !Array.isArray(employee) && (
+          <EmployeeInfoBanner
+            employee={employee}
+            hasSearched={hasSearched}
+            isLoading={isLoading}
+          />
+
+          {employee && (
             <div>
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="space-y-5"
                 >
-                  {!isLoading ? (
-                    <>
-                      {employee !== null &&
+                  {employee !== null &&
                       employee.asignaciones != undefined &&
                       employee.asignaciones.length > 0 ? (
                         <>
@@ -262,10 +215,6 @@ export function ChangeStatusForm() {
                       ) : (
                         <Error errorMessage="El Trabajador No Posee Asignaciones De Cargo" />
                       )}
-                    </>
-                  ) : (
-                    <Spinner className="m-auto w-32 h-32"> Cargando...</Spinner>
-                  )}
                   <Button disabled={isPending} className="w-full mt-2">
                     {isPending ? "Cargando..." : "Cambiar Estatus"}
                   </Button>
