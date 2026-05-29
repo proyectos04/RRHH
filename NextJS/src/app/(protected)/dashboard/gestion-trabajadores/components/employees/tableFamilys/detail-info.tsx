@@ -3,7 +3,13 @@ import { Family } from "@/app/types/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   SheetContentUI,
@@ -23,7 +29,12 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import {
-  GraduationCap, Heart, PersonStanding, Shirt, FileDown, FileText
+  GraduationCap,
+  Heart,
+  PersonStanding,
+  Shirt,
+  FileDown,
+  FileText,
 } from "lucide-react";
 import UpdateFormAcademy from "./updateInfo/form/form-academy-update";
 import FormUpdateHealthFamily from "./updateInfo/form/form-health_profile";
@@ -48,7 +59,8 @@ export function DetailInfoFamily({ family }: Props) {
     `Employeefamily/${family.id}/documentos/list/`,
     apiFetchGet<FamilyDocument[]>,
   );
-  const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
+  const DJANGO_BASE =
+    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (
     <SheetUI>
       <SheetTriggerUI asChild>
@@ -190,9 +202,9 @@ export function DetailInfoFamily({ family }: Props) {
                   </div>
                   <div>Institución:</div>
                   <div>
-                    {family.formacion_academica_familiar?.institucion?.nombre_institucion ?? "N/A"}
+                    {family.formacion_academica_familiar?.institucion
+                      ?.nombre_institucion ?? "N/A"}
                   </div>
-
                 </div>
               </CardContent>
             </Card>
@@ -366,7 +378,9 @@ export function DetailInfoFamily({ family }: Props) {
                     </a>
                   ))}
                   {(!docsData?.data || docsData.data.length === 0) && (
-                    <span className="text-gray-400 text-sm">No hay documentos subidos</span>
+                    <span className="text-gray-400 text-sm">
+                      No hay documentos subidos
+                    </span>
                   )}
                 </div>
               </CardContent>

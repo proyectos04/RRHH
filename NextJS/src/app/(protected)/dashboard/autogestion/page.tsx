@@ -89,7 +89,8 @@ export default function AutogestionPage() {
   });
 
   const yaRespondio =
-    censoData?.data?.respuestas && censoData.data.respuestas.length > 0;
+    Array.isArray(censoData?.data) && censoData.data.length > 0 && censoData.data[0]?.preguntas?.length > 0;
+  const miCenso = Array.isArray(censoData?.data) ? censoData.data[0] : null;
   const isLoading = isLoadingCenso || isLoadingPreguntas;
 
   const onSubmit = (values: DynamicFormValues) => {
@@ -168,7 +169,7 @@ export default function AutogestionPage() {
               </CardContent>
             </Card>
 
-            {censoData?.data && (
+            {miCenso && (
               <Card>
                 <CardContent className="p-6 space-y-4">
                   <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
@@ -179,12 +180,12 @@ export default function AutogestionPage() {
                     <div className="flex items-center gap-2 text-gray-600">
                       <IdCard className="h-4 w-4 text-gray-400" />
                       <span className="font-medium">Cédula:</span>
-                      <span>{censoData.data.empleado_cedula}</span>
+                      <span>{miCenso.cedula}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <Badge className="h-4 w-4 text-gray-400" />
                       <span className="font-medium">Carnet Patria:</span>
-                      <span>{censoData.data.carnet_patria || "No registrado"}</span>
+                      <span>{miCenso.carnet_patria || "No registrado"}</span>
                     </div>
                   </div>
 
@@ -194,11 +195,11 @@ export default function AutogestionPage() {
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
                       <ClipboardCheck className="h-4 w-4" />
                       <span className="font-medium">
-                        Respuestas registradas ({censoData.data.respuestas.length})
+                        Respuestas registradas ({miCenso.preguntas?.length || 0})
                       </span>
                     </div>
                     <div className="max-h-64 overflow-y-auto space-y-2">
-                      {censoData.data.respuestas.map((r, i) => (
+                      {miCenso.preguntas?.map((r, i) => (
                         <div
                           key={i}
                           className="flex items-start gap-2 text-sm bg-gray-50 rounded p-2"
@@ -207,7 +208,7 @@ export default function AutogestionPage() {
                           <div>
                             <p className="text-gray-700">{r.pregunta}</p>
                             <p className="text-gray-400 text-xs">
-                              {r.opcion ? r.opcion : r.respuesta || "—"}
+                              {r.opcion ? r.opcion.opcion : r.respuesta || "—"}
                             </p>
                           </div>
                         </div>

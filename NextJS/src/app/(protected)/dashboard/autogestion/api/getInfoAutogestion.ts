@@ -1,28 +1,40 @@
 import { apiFetchGet } from "@/lib/utils";
-import { apiFetch } from "@/lib/api-client";
+import { apiFetchBlob, apiFetch } from "@/lib/api-client";
 import type { ApiResponse, Pregunta } from "@/app/types/types";
 
 export const getPreguntas = async (): Promise<ApiResponse<Pregunta[]>> => {
   return apiFetchGet<Pregunta[]>("autogestion/preguntas/");
 };
 
-interface CensoEmpleadoData {
-  empleado_cedula: string;
-  carnet_patria: string;
-  respuestas: {
-    pregunta_id: number;
+export interface CensoEmpleadoItem {
+  id: number;
+  cedula: string;
+  nombres: string;
+  apellidos: string;
+  fecha_nacimiento: string;
+  carnet_patria: string | null;
+  cargos: any[];
+  datos_vivienda: any;
+  total_apn: { years: number; months: number; days: number };
+  fecha_ingreso_organismo: string | null;
+  preguntas: {
+    id: number;
     pregunta: string;
     tipo: string;
-    opcion_id: number | null;
-    opcion: string | null;
+    opcion: { id: number; opcion: string } | null;
     respuesta: string;
   }[];
 }
 
-export const consultarCensoEmpleado = async (cedula: string) => {
-  return apiFetchGet<CensoEmpleadoData>(
-    `autogestion/censo-vivienda/consultar/${cedula}/`,
-  );
+export const consultarCensoEmpleado = async (cedula?: string) => {
+  const url = cedula
+    ? `autogestion/censo-vivienda/consultar/?cedula=${encodeURIComponent(cedula)}`
+    : `autogestion/censo-vivienda/consultar/`;
+  return apiFetchGet<CensoEmpleadoItem[]>(url);
+};
+
+export const exportarCensoExcel = async () => {
+  return apiFetchBlob("autogestion/censo-vivienda/exportar-excel/");
 };
 
 interface RespuestaItem {

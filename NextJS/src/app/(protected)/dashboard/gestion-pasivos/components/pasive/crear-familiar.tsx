@@ -162,24 +162,31 @@ export function CreateFamilyPasiveForm() {
   );
 
   const camisas = useMemo(
-    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Camisa") ?? [],
+    () =>
+      tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Camisa") ?? [],
     [tallas],
   );
   const pantalones = useMemo(
-    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Pantalón") ?? [],
+    () =>
+      tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Pantalón") ?? [],
     [tallas],
   );
   const zapatos = useMemo(
-    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Zapato") ?? [],
+    () =>
+      tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Zapato") ?? [],
     [tallas],
   );
   const chaquetas = useMemo(
-    () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Chaqueta") ?? [],
+    () =>
+      tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Chaqueta") ?? [],
     [tallas],
   );
 
   const camisasGrouped = useMemo(() => groupByRegion(camisas), [camisas]);
-  const pantalonesGrouped = useMemo(() => groupByRegion(pantalones), [pantalones]);
+  const pantalonesGrouped = useMemo(
+    () => groupByRegion(pantalones),
+    [pantalones],
+  );
   const zapatosGrouped = useMemo(() => groupByRegion(zapatos), [zapatos]);
   const chaquetasGrouped = useMemo(() => groupByRegion(chaquetas), [chaquetas]);
 
@@ -269,22 +276,28 @@ export function CreateFamilyPasiveForm() {
       );
       if (response.success) {
         const familiarId = response.data?.id;
-        if (familiarId) {
-          const uploadFile = async (file: File, tipo: string) => {
-            const formData = new FormData();
-            formData.append("document_type", tipo);
-            formData.append("file", file);
-            try {
-              await apiFetchFormData(`Employeefamily/${familiarId}/documentos/`, formData);
-            } catch (e) {
-              console.error(`Error subiendo ${tipo}:`, e);
+        if (familiarId && (data.file_cedula || data.file_partida_nacimiento)) {
+          try {
+            const uploadDoc = async (file: File, tipo: string) => {
+              const fd = new FormData();
+              fd.append("familiarId", String(familiarId));
+              fd.append("document_type", tipo);
+              fd.append("file", file);
+              const { uploadFamilyDocument } =
+                await import("../../../gestion-trabajadores/components/employees/tableFamilys/actions/upload-document");
+              await uploadFamilyDocument(fd);
+            };
+            if (data.file_cedula) {
+              await uploadDoc(data.file_cedula, "cedula");
             }
-          };
-          if (data.file_cedula) {
-            uploadFile(data.file_cedula, "cedula");
-          }
-          if (data.file_partida_nacimiento) {
-            uploadFile(data.file_partida_nacimiento, "partida_nacimiento");
+            if (data.file_partida_nacimiento) {
+              await uploadDoc(
+                data.file_partida_nacimiento,
+                "partida_nacimiento",
+              );
+            }
+          } catch (e) {
+            console.error("Error subiendo documentos:", e);
           }
         }
         toast.success(response.message);
@@ -310,8 +323,12 @@ export function CreateFamilyPasiveForm() {
     control: form.control,
     name: "formacion_academica_familiar.nivel_Academico_id",
   });
-  const nivelSeleccionado = academyLevel?.data?.find(n => n.id === academyLevelId);
-  const esNoPosee = nivelSeleccionado?.nivelacademico?.toLowerCase().includes("no posee") || nivelSeleccionado?.nivelacademico?.toLowerCase() === "n/p";
+  const nivelSeleccionado = academyLevel?.data?.find(
+    (n) => n.id === academyLevelId,
+  );
+  const esNoPosee =
+    nivelSeleccionado?.nivelacademico?.toLowerCase().includes("no posee") ||
+    nivelSeleccionado?.nivelacademico?.toLowerCase() === "n/p";
 
   const formSearch = useForm({
     defaultValues: {
@@ -674,12 +691,13 @@ export function CreateFamilyPasiveForm() {
                                           <FormLabel className="cursor-pointer">
                                             Orden de nacimiento
                                           </FormLabel>
-                                      <Select
-                                        onValueChange={(values) => {
-                                          const id = Number.parseInt(values);
-                                          field.onChange(id);
-                                          setSelectedNivelId(id);
-                                        }}
+                                          <Select
+                                            onValueChange={(values) => {
+                                              const id =
+                                                Number.parseInt(values);
+                                              field.onChange(id);
+                                              setSelectedNivelId(id);
+                                            }}
                                           >
                                             <FormControl>
                                               <SelectTrigger className="w-full truncate">
@@ -891,39 +909,77 @@ export function CreateFamilyPasiveForm() {
                                         name={`formacion_academica_familiar.carrera_id`}
                                         render={({ field }) => (
                                           <FormItem>
-                                            <FormLabel>Carrera (Opcional)</FormLabel>
+                                            <FormLabel>
+                                              Carrera (Opcional)
+                                            </FormLabel>
                                             <Select
                                               onValueChange={(values) => {
                                                 if (values === "-1") {
                                                   field.onChange(-1);
-                                                  form.setValue("formacion_academica_familiar.nueva_carrera_nombre", "" as never);
+                                                  form.setValue(
+                                                    "formacion_academica_familiar.nueva_carrera_nombre",
+                                                    "" as never,
+                                                  );
                                                 } else {
-                                                  field.onChange(Number.parseInt(values));
-                                                  form.setValue("formacion_academica_familiar.nueva_carrera_nombre", "" as never);
+                                                  field.onChange(
+                                                    Number.parseInt(values),
+                                                  );
+                                                  form.setValue(
+                                                    "formacion_academica_familiar.nueva_carrera_nombre",
+                                                    "" as never,
+                                                  );
                                                 }
                                                 setMencionId(values);
                                               }}
-                                              value={field.value === -1 ? "-1" : field.value?.toString() ?? ""}
+                                              value={
+                                                field.value === -1
+                                                  ? "-1"
+                                                  : (field.value?.toString() ??
+                                                    "")
+                                              }
                                             >
                                               <FormControl>
                                                 <SelectTrigger className="w-48">
-                                                  <SelectValue placeholder={isLoadingCarrera ? "Cargando..." : "Seleccione"} />
+                                                  <SelectValue
+                                                    placeholder={
+                                                      isLoadingCarrera
+                                                        ? "Cargando..."
+                                                        : "Seleccione"
+                                                    }
+                                                  />
                                                 </SelectTrigger>
                                               </FormControl>
                                               <SelectContent>
                                                 {carrera?.data.map((c, i) => (
-                                                  <SelectItem key={i} value={`${c.id}`}>{c.nombre_carrera}</SelectItem>
+                                                  <SelectItem
+                                                    key={i}
+                                                    value={`${c.id}`}
+                                                  >
+                                                    {c.nombre_carrera}
+                                                  </SelectItem>
                                                 ))}
-                                                {!!academyLevelId && academyLevelId > 0 && !esNoPosee && (
-                                                  <SelectItem value="-1">Otra</SelectItem>
-                                                )}
+                                                {!!academyLevelId &&
+                                                  academyLevelId > 0 &&
+                                                  !esNoPosee && (
+                                                    <SelectItem value="-1">
+                                                      Otra
+                                                    </SelectItem>
+                                                  )}
                                               </SelectContent>
                                             </Select>
                                             <FormMessage />
                                           </FormItem>
                                         )}
                                       />
-                                      <div className={form.watch("formacion_academica_familiar.carrera_id") !== -1 ? "hidden" : ""}>
+                                      <div
+                                        className={
+                                          form.watch(
+                                            "formacion_academica_familiar.carrera_id",
+                                          ) !== -1
+                                            ? "hidden"
+                                            : ""
+                                        }
+                                      >
                                         <FormField
                                           control={form.control}
                                           name="formacion_academica_familiar.nueva_carrera_nombre"
@@ -931,7 +987,11 @@ export function CreateFamilyPasiveForm() {
                                             <FormItem>
                                               <FormLabel>&nbsp;</FormLabel>
                                               <FormControl>
-                                                <Input placeholder="Nueva carrera..." {...field} value={field.value ?? ""} />
+                                                <Input
+                                                  placeholder="Nueva carrera..."
+                                                  {...field}
+                                                  value={field.value ?? ""}
+                                                />
                                               </FormControl>
                                               <FormMessage />
                                             </FormItem>
@@ -945,30 +1005,60 @@ export function CreateFamilyPasiveForm() {
                                         name={`formacion_academica_familiar.mencion_id`}
                                         render={({ field }) => (
                                           <FormItem>
-                                            <FormLabel>Mención (Opcional)</FormLabel>
+                                            <FormLabel>
+                                              Mención (Opcional)
+                                            </FormLabel>
                                             <Select
                                               onValueChange={(values) => {
                                                 if (values === "-1") {
                                                   field.onChange(-1);
-                                                  form.setValue("formacion_academica_familiar.nueva_mencion_nombre", "" as never);
+                                                  form.setValue(
+                                                    "formacion_academica_familiar.nueva_mencion_nombre",
+                                                    "" as never,
+                                                  );
                                                 } else {
-                                                  field.onChange(Number.parseInt(values));
-                                                  form.setValue("formacion_academica_familiar.nueva_mencion_nombre", "" as never);
+                                                  field.onChange(
+                                                    Number.parseInt(values),
+                                                  );
+                                                  form.setValue(
+                                                    "formacion_academica_familiar.nueva_mencion_nombre",
+                                                    "" as never,
+                                                  );
                                                 }
                                               }}
-                                              value={field.value === -1 ? "-1" : field.value?.toString() ?? ""}
+                                              value={
+                                                field.value === -1
+                                                  ? "-1"
+                                                  : (field.value?.toString() ??
+                                                    "")
+                                              }
                                             >
                                               <FormControl>
                                                 <SelectTrigger className="w-48">
-                                                  <SelectValue placeholder={isLoadingMencion ? "Cargando..." : "Seleccione"} />
+                                                  <SelectValue
+                                                    placeholder={
+                                                      isLoadingMencion
+                                                        ? "Cargando..."
+                                                        : "Seleccione"
+                                                    }
+                                                  />
                                                 </SelectTrigger>
                                               </FormControl>
                                               <SelectContent>
                                                 {mencion?.data.map((m, i) => (
-                                                  <SelectItem key={i} value={`${m.id}`}>{m.nombre_mencion}</SelectItem>
+                                                  <SelectItem
+                                                    key={i}
+                                                    value={`${m.id}`}
+                                                  >
+                                                    {m.nombre_mencion}
+                                                  </SelectItem>
                                                 ))}
-                                                {(form.watch("formacion_academica_familiar.carrera_id") as number) > 0 && (
-                                                  <SelectItem value="-1">Otra</SelectItem>
+                                                {(form.watch(
+                                                  "formacion_academica_familiar.carrera_id",
+                                                ) as number) > 0 && (
+                                                  <SelectItem value="-1">
+                                                    Otra
+                                                  </SelectItem>
                                                 )}
                                               </SelectContent>
                                             </Select>
@@ -976,7 +1066,15 @@ export function CreateFamilyPasiveForm() {
                                           </FormItem>
                                         )}
                                       />
-                                      <div className={form.watch("formacion_academica_familiar.mencion_id") !== -1 ? "hidden" : ""}>
+                                      <div
+                                        className={
+                                          form.watch(
+                                            "formacion_academica_familiar.mencion_id",
+                                          ) !== -1
+                                            ? "hidden"
+                                            : ""
+                                        }
+                                      >
                                         <FormField
                                           control={form.control}
                                           name="formacion_academica_familiar.nueva_mencion_nombre"
@@ -984,7 +1082,11 @@ export function CreateFamilyPasiveForm() {
                                             <FormItem>
                                               <FormLabel>&nbsp;</FormLabel>
                                               <FormControl>
-                                                <Input placeholder="Nueva mención..." {...field} value={field.value ?? ""} />
+                                                <Input
+                                                  placeholder="Nueva mención..."
+                                                  {...field}
+                                                  value={field.value ?? ""}
+                                                />
                                               </FormControl>
                                               <FormMessage />
                                             </FormItem>
@@ -1019,18 +1121,37 @@ export function CreateFamilyPasiveForm() {
                                         render={({ field }) => (
                                           <FormItem>
                                             <FormLabel>
-                                              Institución {(form.watch("formacion_academica_familiar.carrera_id") as number) > 0 ? <span className="text-red-500">*</span> : "(Opcional)"}
+                                              Institución{" "}
+                                              {(form.watch(
+                                                "formacion_academica_familiar.carrera_id",
+                                              ) as number) > 0 ? (
+                                                <span className="text-red-500">
+                                                  *
+                                                </span>
+                                              ) : (
+                                                "(Opcional)"
+                                              )}
                                             </FormLabel>
                                             <Select
                                               onValueChange={(values) => {
                                                 if (values === "-1") {
                                                   field.onChange(-1);
                                                 } else {
-                                                  field.onChange(Number(values));
-                                                  form.setValue("formacion_academica_familiar.nueva_institucion_nombre", "" as never);
+                                                  field.onChange(
+                                                    Number(values),
+                                                  );
+                                                  form.setValue(
+                                                    "formacion_academica_familiar.nueva_institucion_nombre",
+                                                    "" as never,
+                                                  );
                                                 }
                                               }}
-                                              value={field.value === -1 ? "-1" : field.value?.toString() ?? ""}
+                                              value={
+                                                field.value === -1
+                                                  ? "-1"
+                                                  : (field.value?.toString() ??
+                                                    "")
+                                              }
                                             >
                                               <FormControl>
                                                 <SelectTrigger className="w-48">
@@ -1038,17 +1159,34 @@ export function CreateFamilyPasiveForm() {
                                                 </SelectTrigger>
                                               </FormControl>
                                               <SelectContent>
-                                                {instituciones?.data?.map((inst) => (
-                                                  <SelectItem key={inst.id} value={inst.id.toString()}>{inst.nombre_institucion}</SelectItem>
-                                                ))}
-                                                <SelectItem value="-1">Otra</SelectItem>
+                                                {instituciones?.data?.map(
+                                                  (inst) => (
+                                                    <SelectItem
+                                                      key={inst.id}
+                                                      value={inst.id.toString()}
+                                                    >
+                                                      {inst.nombre_institucion}
+                                                    </SelectItem>
+                                                  ),
+                                                )}
+                                                <SelectItem value="-1">
+                                                  Otra
+                                                </SelectItem>
                                               </SelectContent>
                                             </Select>
                                             <FormMessage />
                                           </FormItem>
                                         )}
                                       />
-                                      <div className={form.watch("formacion_academica_familiar.institucion_id") !== -1 ? "hidden" : ""}>
+                                      <div
+                                        className={
+                                          form.watch(
+                                            "formacion_academica_familiar.institucion_id",
+                                          ) !== -1
+                                            ? "hidden"
+                                            : ""
+                                        }
+                                      >
                                         <FormField
                                           control={form.control}
                                           name="formacion_academica_familiar.nueva_institucion_nombre"
@@ -1056,7 +1194,11 @@ export function CreateFamilyPasiveForm() {
                                             <FormItem>
                                               <FormLabel>&nbsp;</FormLabel>
                                               <FormControl>
-                                                <Input placeholder="Nueva institución..." {...field} value={field.value ?? ""} />
+                                                <Input
+                                                  placeholder="Nueva institución..."
+                                                  {...field}
+                                                  value={field.value ?? ""}
+                                                />
                                               </FormControl>
                                               <FormMessage />
                                             </FormItem>
@@ -1079,23 +1221,44 @@ export function CreateFamilyPasiveForm() {
                                     <FormItem>
                                       <FormLabel>Talla De Camisa</FormLabel>
                                       <Select
-                                        onValueChange={(v) => field.onChange(Number(v))}
-                                        value={field.value ? field.value.toString() : ""}
+                                        onValueChange={(v) =>
+                                          field.onChange(Number(v))
+                                        }
+                                        value={
+                                          field.value
+                                            ? field.value.toString()
+                                            : ""
+                                        }
                                       >
                                         <FormControl>
                                           <SelectTrigger className="w-full truncate">
-                                            <SelectValue placeholder={isLoadingTallas ? "Cargando..." : "Seleccione una talla"} />
+                                            <SelectValue
+                                              placeholder={
+                                                isLoadingTallas
+                                                  ? "Cargando..."
+                                                  : "Seleccione una talla"
+                                              }
+                                            />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {Object.entries(camisasGrouped).map(([region, items]) => (
-                                            <SelectGroup key={region}>
-                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
-                                              {items.map((item) => (
-                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
-                                              ))}
-                                            </SelectGroup>
-                                          ))}
+                                          {Object.entries(camisasGrouped).map(
+                                            ([region, items]) => (
+                                              <SelectGroup key={region}>
+                                                <SelectLabel className="text-xs font-bold text-muted-foreground">
+                                                  {region}
+                                                </SelectLabel>
+                                                {items.map((item) => (
+                                                  <SelectItem
+                                                    key={item.id}
+                                                    value={item.id.toString()}
+                                                  >
+                                                    {item.valor}
+                                                  </SelectItem>
+                                                ))}
+                                              </SelectGroup>
+                                            ),
+                                          )}
                                         </SelectContent>
                                       </Select>
                                       <FormMessage />
@@ -1109,17 +1272,32 @@ export function CreateFamilyPasiveForm() {
                                     <FormItem>
                                       <FormLabel>Talla De Pantalón</FormLabel>
                                       <Select
-                                        onValueChange={(v) => field.onChange(Number(v))}
-                                        value={field.value ? field.value.toString() : ""}
+                                        onValueChange={(v) =>
+                                          field.onChange(Number(v))
+                                        }
+                                        value={
+                                          field.value
+                                            ? field.value.toString()
+                                            : ""
+                                        }
                                       >
                                         <FormControl>
                                           <SelectTrigger className="w-full truncate">
-                                            <SelectValue placeholder={isLoadingTallas ? "Cargando..." : "Seleccione una talla"} />
+                                            <SelectValue
+                                              placeholder={
+                                                isLoadingTallas
+                                                  ? "Cargando..."
+                                                  : "Seleccione una talla"
+                                              }
+                                            />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
                                           {pantalones.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
+                                            <SelectItem
+                                              key={item.id}
+                                              value={item.id.toString()}
+                                            >
                                               {item.valor}
                                             </SelectItem>
                                           ))}
@@ -1137,17 +1315,32 @@ export function CreateFamilyPasiveForm() {
                                     <FormItem className="col-span-2">
                                       <FormLabel>Talla De Zapatos</FormLabel>
                                       <Select
-                                        onValueChange={(v) => field.onChange(Number(v))}
-                                        value={field.value ? field.value.toString() : ""}
+                                        onValueChange={(v) =>
+                                          field.onChange(Number(v))
+                                        }
+                                        value={
+                                          field.value
+                                            ? field.value.toString()
+                                            : ""
+                                        }
                                       >
                                         <FormControl>
                                           <SelectTrigger className="w-full truncate">
-                                            <SelectValue placeholder={isLoadingTallas ? "Cargando..." : "Seleccione una talla"} />
+                                            <SelectValue
+                                              placeholder={
+                                                isLoadingTallas
+                                                  ? "Cargando..."
+                                                  : "Seleccione una talla"
+                                              }
+                                            />
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
                                           {zapatos.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
+                                            <SelectItem
+                                              key={item.id}
+                                              value={item.id.toString()}
+                                            >
                                               {item.valor}
                                             </SelectItem>
                                           ))}
@@ -1480,7 +1673,9 @@ export function CreateFamilyPasiveForm() {
                                   <FormField
                                     control={form.control}
                                     name="file_partida_nacimiento"
-                                    render={({ field: { value, onChange } }) => (
+                                    render={({
+                                      field: { value, onChange },
+                                    }) => (
                                       <FileUpload
                                         label="Partida de Nacimiento"
                                         value={value}

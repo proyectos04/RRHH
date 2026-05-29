@@ -31,6 +31,7 @@ declare module "next-auth" {
         nombre: string;
       };
       debeCambiarPassword: boolean;
+      debeCambiarPassword: boolean;
     } & DefaultSession["user"];
   }
   interface User {

@@ -26,6 +26,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         token.djAccess = (user as any).djAccess;
         token.djRefresh = (user as any).djRefresh;
+        token.debeCambiarPassword = (user as any).debeCambiarPassword || false;
       }
       return token;
     },

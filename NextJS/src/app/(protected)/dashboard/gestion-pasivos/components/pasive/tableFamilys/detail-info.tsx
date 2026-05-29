@@ -27,7 +27,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { format } from "date-fns";
-import { GraduationCap, Heart, PersonStanding, Shirt, FileDown, FileText } from "lucide-react";
+import {
+  GraduationCap,
+  Heart,
+  PersonStanding,
+  Shirt,
+  FileDown,
+  FileText,
+} from "lucide-react";
 import { useSWRConfig } from "swr";
 import useSWR from "swr";
 import { apiFetchGet } from "@/lib/utils";
@@ -46,7 +53,8 @@ export function DetailInfoFamily({ family }: Props) {
     `Employeefamily/${family.id}/documentos/list/`,
     apiFetchGet<FamilyDocument[]>,
   );
-  const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
+  const DJANGO_BASE =
+    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (
     <SheetUI>
       <SheetTriggerUI asChild>
@@ -185,8 +193,6 @@ export function DetailInfoFamily({ family }: Props) {
                     {family.formacion_academica_familiar?.institucion
                       ?.nombre_institucion ?? "N/A"}
                   </div>
-
-                  
                 </div>
               </CardContent>
             </Card>
@@ -360,7 +366,9 @@ export function DetailInfoFamily({ family }: Props) {
                     </a>
                   ))}
                   {(!docsData?.data || docsData.data.length === 0) && (
-                    <span className="text-gray-400 text-sm">No hay documentos subidos</span>
+                    <span className="text-gray-400 text-sm">
+                      No hay documentos subidos
+                    </span>
                   )}
                 </div>
               </CardContent>
