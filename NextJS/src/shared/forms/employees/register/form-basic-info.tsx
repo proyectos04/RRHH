@@ -196,27 +196,46 @@ export function FormBasicInfo({
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <InputForm
-                  form={form}
-                  label="Cedula de Identidad *"
-                  nameInput="cedulaidentidad"
-                  placeholder="00000000"
-                  type="number"
-                />
-                <InputForm
-                  form={form}
-                  label="Nombre *"
-                  nameInput="nombres"
-                  placeholder="Juan Bernardo"
-                  type="text"
-                />
-                <InputForm
-                  form={form}
-                  label="Apellidos *"
-                  nameInput="apellidos"
-                  placeholder="Perez Gutierrez"
-                  type="text"
-                />
+                <div className="flex gap-2 col-span-2">
+                  <div className="flex-1">
+                    <InputForm
+                      form={form}
+                      label="Cedula de Identidad *"
+                      nameInput="cedulaidentidad"
+                      placeholder="00000000"
+                      type="number"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <InputForm
+                      form={form}
+                      label="Carnet de la Patria"
+                      nameInput="carnet_patria"
+                      placeholder="00000000000000000000"
+                      type="text"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 col-span-2">
+                  <div className="flex-1">
+                    <InputForm
+                      form={form}
+                      label="Nombre *"
+                      nameInput="nombres"
+                      placeholder="Juan Bernardo"
+                      type="text"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <InputForm
+                      form={form}
+                      label="Apellidos *"
+                      nameInput="apellidos"
+                      placeholder="Perez Gutierrez"
+                      type="text"
+                    />
+                  </div>
+                </div>
                 <FormField
                   control={form.control}
                   name="fecha_nacimiento"

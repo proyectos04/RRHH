@@ -223,16 +223,18 @@ export function CodigoCatalogEspecialForm({
       <CardContent>
         <EmployeeSearchForm onSearch={search} />
 
-        <EmployeeInfoBanner
-          employee={employee}
-          hasSearched={hasSearched}
-          isLoading={isLoadingSearch}
-          extraFields={
-            employee?.estadoCivil
-              ? [{ label: "Estado Civil", value: employee.estadoCivil.estadoCivil }]
-              : []
-          }
-        />
+        <div className="mt-4">
+          <EmployeeInfoBanner
+            employee={employee}
+            hasSearched={hasSearched}
+            isLoading={isLoadingSearch}
+            extraFields={
+              employee?.estadoCivil
+                ? [{ label: "Estado Civil", value: employee.estadoCivil.estadoCivil }]
+                : []
+            }
+          />
+        </div>
 
         {showContratoForm && !hasActiveContrato && employee && (
           <div className="border-2 border-yellow-400/45 bg-yellow-100/40 p-4 rounded-sm space-y-3 mt-3">

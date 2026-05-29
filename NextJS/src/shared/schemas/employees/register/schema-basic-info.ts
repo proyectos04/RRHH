@@ -103,5 +103,6 @@ export const schemaBasicInfo = z.object({
         "Número inválido. Debe iniciar con un prefijo válido y tener 11 dígitos en total",
     })
     .optional(),
+  carnet_patria: z.string().optional(),
 })
 export type BasicInfoType = z.infer<typeof schemaBasicInfo>

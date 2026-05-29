@@ -26,7 +26,7 @@ import {
   NotebookTabs,
   SignpostBig,
   User,
-  UserPlus
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -223,7 +223,7 @@ const items: MenuItem[] = [
         },
       },
       {
-        title: "Préstamo de Cargo",
+        title: "Asignar Encargaduría",
         url: "/dashboard/gestion-trabajadores/movimientos/prestamo-cargo",
         icon: ArrowRightLeft,
         permission: {

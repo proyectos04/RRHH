@@ -107,10 +107,16 @@ class GestionStatusSerializer(BaseActionInputSerializer):
     motivo = serializers.PrimaryKeyRelatedField(queryset=Tipo_movimiento.objects.all())
 
     def validate_estatus_id(self, value):
- 
         if value.estatus.upper() not in ESTATUS_PERMITIDOS:
             raise serializers.ValidationError("Gestión de estatus no permitido")
         return value
+
+    def validate(self, attrs):
+        if self.instance and self.instance.estatusid == attrs.get('estatus'):
+            raise serializers.ValidationError(
+                {"estatus_id": f"El cargo ya se encuentra en estatus '{self.instance.estatusid.estatus}'"}
+            )
+        return attrs
 
     @transaction.atomic
     def update(self, instance, validated_data):

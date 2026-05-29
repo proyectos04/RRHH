@@ -238,8 +238,8 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     mutate={mutate} updateInfoEmployee={updateInfoEmployee} mutateKey="api/pasivos"
                     idEmployee={employee.id.toString()}
                     defaultValues={{
-                      antecedentes:
-                        employee.antecedentes?.map((ant) => ({
+                      antecedentes: employee.antecedentes?.length
+                        ? employee.antecedentes.map((ant) => ({
                           organismo_id: ant.organismo?.id ?? undefined,
                           fecha_ingreso: ant.fecha_ingreso
                             ? new Date(ant.fecha_ingreso)
@@ -247,7 +247,8 @@ export default function DetailInfoEmployee({ employee }: Props) {
                           fecha_egreso: ant.fecha_egreso
                             ? new Date(ant.fecha_egreso)
                             : undefined,
-                        })) ?? [],
+                        }))
+                        : [],
                     }}
                   />
                 </DialogContent>
@@ -297,6 +298,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                   <div>Direccion De Habitación:</div>
                   <div>
                     {employee.datos_vivienda?.direccion_exacta ?? "N/A"}
+                  </div>
+                  <div>Código Postal:</div>
+                  <div>
+                    {employee.datos_vivienda?.codigo_postal ?? "N/A"}
                   </div>
                 </div>
               </CardContent>
@@ -419,6 +424,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <div>
                       {employee.perfil_fisico?.tallaZapatos?.valor ?? "N/A"}
                     </div>
+                  </div>
+                  <div>Talla De Chaqueta:</div>
+                  <div>
+                    {employee.perfil_fisico?.tallaChaqueta?.valor ?? "N/A"}
                   </div>
                 </div>
               </CardContent>

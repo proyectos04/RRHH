@@ -3,7 +3,7 @@ import { Family } from "@/app/types/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   SheetContentUI,
@@ -77,6 +77,9 @@ export function DetailInfoFamily({ family }: Props) {
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Actualizar Información Básica</DialogTitle>
+                    </DialogHeader>
                     <UpdateBasicInfoFamily mutate={mutate} id={family.id} />
                   </DialogContent>
                 </Dialog>
@@ -120,6 +123,9 @@ export function DetailInfoFamily({ family }: Props) {
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Actualizar Parentesco</DialogTitle>
+                    </DialogHeader>
                     <FormRelationship mutate={mutate} id={family.id} />
                   </DialogContent>
                 </Dialog>

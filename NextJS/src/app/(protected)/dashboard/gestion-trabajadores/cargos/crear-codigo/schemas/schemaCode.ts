@@ -18,7 +18,9 @@ export const schemaCode = z.object({
   Dependencia: z.number().min(1, {
     message: "Debe Seleccionar un nivel",
   }),
-  DireccionGeneral: z.number().default(0),
+  DireccionGeneral: z.number().min(1, {
+    message: "Debe Seleccionar una Gerencia u Oficina",
+  }),
   DireccionLinea: z.number().default(0),
   Coordinacion: z.number().default(0),
 });

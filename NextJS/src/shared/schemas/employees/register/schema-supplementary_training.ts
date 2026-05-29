@@ -4,16 +4,17 @@ export const schemaFormacionComplementaria = z
   .object({
     capacitacion_id: z
       .number({ message: "Debe seleccionar una capacitación" })
-      .optional(),
+      .min(1, { message: "Debe seleccionar una capacitación" }),
     nueva_capacitacion_nombre: z.string().optional(),
     institucion_id: z
       .number({ message: "Debe seleccionar una institución" })
-      .optional(),
+      .min(1, { message: "Debe seleccionar una institución" }),
     nueva_institucion_nombre: z.string().optional(),
     procedencia_id: z
       .number({ message: "Debe seleccionar una procedencia" })
-      .optional(),
+      .min(1, { message: "Debe seleccionar una procedencia" }),
     horas_completadas: z.string().optional(),
+    grupo_id: z.number().optional(),
     fecha_inicio: z
       .date({
         message: "Debe Ingresar Información Valida",

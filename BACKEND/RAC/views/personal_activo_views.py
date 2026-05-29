@@ -790,7 +790,7 @@ def update_employee(request, id):
         serializer.save()
         
         return Response({
-            'status': "OK",
+            'status': "success",
             'message': "Empleado actualizado correctamente",
             'data': serializer.data            
         }, status=status.HTTP_200_OK)
@@ -2053,7 +2053,7 @@ def list_pathology_categories(request):
             queryset = categorias_patologias.objects.all()
             serializer = categoriasPatologiasSerializer(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Categorías listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -2107,7 +2107,7 @@ def list_chronic_pathologies(request):
             queryset = patologias_Cronicas.objects.all()
             serializer = PatologiasSerializer(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Patologías listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -2164,7 +2164,7 @@ def list_disability_categories(request):
             queryset = categorias_discapacidad.objects.all()
             serializer = categoriasDiscapacidadesSerializer(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Categorías listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -2222,7 +2222,7 @@ def list_disabilities(request):
             queryset = Discapacidades.objects.all()
             serializer = DiscapacidadSerializer(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Discapacidades listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -2280,7 +2280,7 @@ def list_allergies_categories(request):
             queryset = categorias_alergias.objects.all()
             serializer = categoriaAlergiaSerializers(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Categorías de alergias listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)
@@ -2336,7 +2336,7 @@ def list_allergies(request):
             queryset = Alergias.objects.all()
             serializer = AlergiasSerializer(queryset, many=True)
             return Response({
-                'status': "OK",
+                'status': "success",
                 'message': "Alergias listadas correctamente",
                 'data': serializer.data
             }, status=status.HTTP_200_OK)

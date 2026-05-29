@@ -57,7 +57,7 @@ export default function FormAcademyLevel({
 
   const form = useForm({
     resolver: zodResolver(schemaAcademy),
-    defaultValues,
+    values: defaultValues,
     mode: "onChange",
   });
 
@@ -192,6 +192,8 @@ export default function FormAcademyLevel({
                 const isOtherInstitucion = watchedInstitucionId === -1;
                 const isOtherMencion = watchedMencionId === -1;
                 const hasCarrera = watchedCarreraId != null && watchedCarreraId > 0;
+                const nivelSeleccionado = academyLevel?.data?.find(n => n.id === watchedNivelAcademicoId);
+                const esNoPosee = nivelSeleccionado?.nivelacademico?.toLowerCase().includes("no posee") || nivelSeleccionado?.nivelacademico?.toLowerCase() === "n/p";
 
                 return (
                   <div
@@ -286,7 +288,7 @@ export default function FormAcademyLevel({
                                     {c.nombre_carrera}
                                   </SelectItem>
                                 ))}
-                                {!!watchedNivelAcademicoId && watchedNivelAcademicoId > 0 && (
+                                {!!watchedNivelAcademicoId && watchedNivelAcademicoId > 0 && !esNoPosee && (
                                   <SelectItem value="-1">Otra</SelectItem>
                                 )}
                               </SelectContent>
@@ -304,6 +306,7 @@ export default function FormAcademyLevel({
                               <FormLabel>&nbsp;</FormLabel>
                               <FormControl>
                                 <Input
+                                  className="w-44"
                                   placeholder="Nueva carrera..."
                                   {...field}
                                   value={field.value ?? ""}
@@ -378,6 +381,7 @@ export default function FormAcademyLevel({
                               <FormLabel>&nbsp;</FormLabel>
                               <FormControl>
                                 <Input
+                                  className="w-44"
                                   placeholder="Nueva mención..."
                                   {...field}
                                   value={field.value ?? ""}
@@ -453,6 +457,7 @@ export default function FormAcademyLevel({
                               <FormLabel>&nbsp;</FormLabel>
                               <FormControl>
                                 <Input
+                                  className="w-44"
                                   placeholder="Nueva institución..."
                                   {...field}
                                   value={field.value ?? ""}

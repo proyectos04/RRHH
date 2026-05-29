@@ -27,12 +27,15 @@ import {
   DisabilitysType,
   EmployeeData,
   PatologysType,
+  TallaItem,
 } from "@/app/types/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -81,6 +84,19 @@ import Error from "../../../gestion-trabajadores/components/error/error";
 import Loading from "../../../gestion-trabajadores/components/loading/loading";
 import createFamilyPasiveActions from "../../personal-jubilado/familiares/agregar-familiar/actions/create-family-pasive-actions";
 import { getPasiveSearch } from "../../api/getInfoPasive";
+
+function groupByRegion(tallas: TallaItem[]) {
+  return tallas.reduce(
+    (acc: Record<string, TallaItem[]>, item: TallaItem) => {
+      const codigo = item.region.codigo;
+      if (!acc[codigo]) acc[codigo] = [];
+      acc[codigo].push(item);
+      return acc;
+    },
+    {} as Record<string, TallaItem[]>,
+  );
+}
+
 export function CreateFamilyPasiveForm() {
   const [employee, setEmployee] = useState<ApiResponse<EmployeeData>>();
   const [isPending, startTransition] = useTransition();
@@ -89,13 +105,14 @@ export function CreateFamilyPasiveForm() {
   const [mencionId, setMencionId] = useState<string>();
 
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [selectedNivelId, setSelectedNivelId] = useState<number>();
   const { data: academyLevel, isLoading: isLoadingAcademyLevel } = useSWR(
     "academyLevel",
     async () => await getAcademyLevel(),
   );
   const { data: carrera, isLoading: isLoadingCarrera } = useSWR(
-    "carrera",
-    async () => await getCarrera(),
+    selectedNivelId ? ["carrera", selectedNivelId] : null,
+    async () => await getCarrera(selectedNivelId || undefined),
   );
   const { data: mencion, isLoading: isLoadingMencion } = useSWR(
     mencionId ? ["mencion", mencionId] : null,
@@ -122,6 +139,7 @@ export function CreateFamilyPasiveForm() {
         tallaCamisa: 0,
         tallaPantalon: 0,
         tallaZapatos: 0,
+        tallaChaqueta: 0,
       },
       perfil_salud_familiar: {
         discapacidad: [],
@@ -138,7 +156,7 @@ export function CreateFamilyPasiveForm() {
     mode: "onSubmit",
   });
   const { data: tallas, isLoading: isLoadingTallas } = useSWR(
-    "tallas-family",
+    "tallas",
     async () => await getTallas(),
   );
 
@@ -158,6 +176,11 @@ export function CreateFamilyPasiveForm() {
     () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Chaqueta") ?? [],
     [tallas],
   );
+
+  const camisasGrouped = useMemo(() => groupByRegion(camisas), [camisas]);
+  const pantalonesGrouped = useMemo(() => groupByRegion(pantalones), [pantalones]);
+  const zapatosGrouped = useMemo(() => groupByRegion(zapatos), [zapatos]);
+  const chaquetasGrouped = useMemo(() => groupByRegion(chaquetas), [chaquetas]);
 
   const { data: patology, isLoading: isLoadingPatology } = useSWR(
     "patology",
@@ -293,6 +316,8 @@ export function CreateFamilyPasiveForm() {
     control: form.control,
     name: "formacion_academica_familiar.nivel_Academico_id",
   });
+  const nivelSeleccionado = academyLevel?.data?.find(n => n.id === academyLevelId);
+  const esNoPosee = nivelSeleccionado?.nivelacademico?.toLowerCase().includes("no posee") || nivelSeleccionado?.nivelacademico?.toLowerCase() === "n/p";
 
   const formSearch = useForm({
     defaultValues: {
@@ -655,12 +680,12 @@ export function CreateFamilyPasiveForm() {
                                           <FormLabel className="cursor-pointer">
                                             Orden de nacimiento
                                           </FormLabel>
-                                          <Select
-                                            onValueChange={(values) => {
-                                              field.onChange(
-                                                Number.parseInt(values),
-                                              );
-                                            }}
+                                      <Select
+                                        onValueChange={(values) => {
+                                          const id = Number.parseInt(values);
+                                          field.onChange(id);
+                                          setSelectedNivelId(id);
+                                        }}
                                           >
                                             <FormControl>
                                               <SelectTrigger className="w-full truncate">
@@ -848,7 +873,8 @@ export function CreateFamilyPasiveForm() {
                                       </Select>
                                       {!(
                                         academyLevelId == 1 ||
-                                        academyLevelId == 2
+                                        academyLevelId == 2 ||
+                                        esNoPosee
                                       ) && (
                                         <FormDescription className="flex flex-row gap-2 justify-end">
                                           <Label>
@@ -894,7 +920,7 @@ export function CreateFamilyPasiveForm() {
                                                 {carrera?.data.map((c, i) => (
                                                   <SelectItem key={i} value={`${c.id}`}>{c.nombre_carrera}</SelectItem>
                                                 ))}
-                                                {!!academyLevelId && academyLevelId > 0 && (
+                                                {!!academyLevelId && academyLevelId > 0 && !esNoPosee && (
                                                   <SelectItem value="-1">Otra</SelectItem>
                                                 )}
                                               </SelectContent>
@@ -1068,10 +1094,13 @@ export function CreateFamilyPasiveForm() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {camisas.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
-                                              {item.valor}
-                                            </SelectItem>
+                                          {Object.entries(camisasGrouped).map(([region, items]) => (
+                                            <SelectGroup key={region}>
+                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
+                                              {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
+                                              ))}
+                                            </SelectGroup>
                                           ))}
                                         </SelectContent>
                                       </Select>

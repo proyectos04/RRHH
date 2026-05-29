@@ -97,7 +97,7 @@ export default function FormUpdateSupplementaryTraining({
 
   const form = useForm({
     resolver: zodResolver(schemaSupplementaryTrainingUpdate),
-    defaultValues,
+    values: defaultValues,
   });
   const { fields, append, remove } = useFieldArray({
     name: "formacion_complementaria",
@@ -159,16 +159,16 @@ export default function FormUpdateSupplementaryTraining({
                           {
                             fecha_inicio: undefined,
                             fecha_fin: undefined,
-                            institucion_id: undefined,
+                            institucion_id: 0,
                             nueva_institucion_nombre: undefined,
-                            capacitacion_id: undefined,
+                            capacitacion_id: 0,
                             nueva_capacitacion_nombre: undefined,
-                            procedencia_id: undefined,
+                            procedencia_id: 0,
                             grupo_id: undefined,
                             horas_completadas: undefined,
                           },
                         ],
-                      } as SupplementaryTrainingUpdateType);
+                      } as any);
                     }}
                   >
                     <Trash />
@@ -186,11 +186,11 @@ export default function FormUpdateSupplementaryTraining({
                         append({
                           fecha_inicio: undefined,
                           fecha_fin: undefined,
-                          institucion_id: undefined,
+                          institucion_id: 0,
                           nueva_institucion_nombre: undefined,
-                          capacitacion_id: undefined,
+                          capacitacion_id: 0,
                           nueva_capacitacion_nombre: undefined,
-                          procedencia_id: undefined,
+                          procedencia_id: 0,
                           grupo_id: undefined,
                           horas_completadas: undefined,
                         });

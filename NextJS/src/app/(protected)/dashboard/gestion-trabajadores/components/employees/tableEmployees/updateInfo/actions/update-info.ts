@@ -98,16 +98,12 @@ export default async function updateInfoEmployee(
             const result = await createCapacitacion(item.nueva_capacitacion_nombre.trim());
             if (result.status === "success" && result.data?.id) {
               processed = { ...processed, capacitacion_id: result.data.id, nueva_capacitacion_nombre: undefined };
-            } else {
-              processed = { ...processed, capacitacion_id: undefined, nueva_capacitacion_nombre: undefined };
             }
           }
           if (item.institucion_id === -1 && typeof item.nueva_institucion_nombre === "string" && item.nueva_institucion_nombre.trim()) {
             const result = await createInstitucion(item.nueva_institucion_nombre.trim());
             if (result.status === "success" && result.data?.id) {
               processed = { ...processed, institucion_id: result.data.id, nueva_institucion_nombre: undefined };
-            } else {
-              processed = { ...processed, institucion_id: undefined, nueva_institucion_nombre: undefined };
             }
           }
           return processed;

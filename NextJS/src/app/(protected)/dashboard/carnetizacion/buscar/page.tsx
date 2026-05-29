@@ -24,6 +24,14 @@ import SearchForm from "../components/forms/search-form";
 import type { EmployeeCarnet } from "../types/carnetizacion";
 import { toast } from "sonner";
 
+function truncarNombre(nombreCompleto: string): string {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  if (partes.length <= 3) return nombreCompleto;
+  const nombres = partes.slice(0, 2);
+  const apellidos = partes.slice(-2);
+  return [...nombres, ...apellidos].join(" ");
+}
+
 export default function BuscarPersonalPage() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -139,7 +147,7 @@ export default function BuscarPersonalPage() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg">
-                          {emp.nombre_completo}
+                          {truncarNombre(emp.nombre_completo)}
                         </h3>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground mt-1">
                           <span>C.I: {emp.cedula}</span>

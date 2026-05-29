@@ -97,9 +97,9 @@ const schema: SchemaFormity<Values> = [
             {
               fecha_inicio: undefined,
               fecha_fin: undefined,
-              institucion_id: undefined,
-              capacitacion_id: undefined,
-              procedencia_id: undefined,
+              institucion_id: 0,
+              capacitacion_id: 0,
+              procedencia_id: 0,
               horas_completadas: undefined,
             },
           ],

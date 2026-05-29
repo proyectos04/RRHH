@@ -4,18 +4,15 @@ export const schemaSupplementaryTrainingDateUpdate = z
   .object({
     capacitacion_id: z
       .number({ message: "Debe seleccionar una capacitación" })
-      .optional()
-      .nullable(),
+      .min(1, { message: "Debe seleccionar una capacitación" }),
     nueva_capacitacion_nombre: z.string().optional(),
     institucion_id: z
       .number({ message: "Debe seleccionar una institución" })
-      .optional()
-      .nullable(),
+      .min(1, { message: "Debe seleccionar una institución" }),
     nueva_institucion_nombre: z.string().optional(),
     procedencia_id: z
       .number({ message: "Debe seleccionar una procedencia" })
-      .optional()
-      .nullable(),
+      .min(1, { message: "Debe seleccionar una procedencia" }),
     grupo_id: z
       .number()
       .optional()

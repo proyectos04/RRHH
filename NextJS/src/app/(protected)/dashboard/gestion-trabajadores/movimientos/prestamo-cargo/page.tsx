@@ -6,7 +6,7 @@ import { PrestamoCargoForm } from "./prestamo-cargo-form";
 export default function PrestamoCargoPage() {
   return (
     <PageLayout
-      title="Préstamo de Cargo (Encargaduría)"
+      title="Gestión de Encargaduría"
       description="Asigne temporalmente un cargo a un trabajador"
     >
       <PrestamoCargoForm />

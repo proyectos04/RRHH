@@ -151,6 +151,10 @@ export function AsigCode() {
     coordinacion_id: z.coerce.number().optional(),
   });
   const onSearch = (values: z.infer<typeof schemaSearch>) => {
+    if (values.dependencia_id && values.dependencia_id > 0 && (!values.direccion_general_id || values.direccion_general_id === 0)) {
+      toast.error("Debe seleccionar una Gerencia u Oficina (Dirección General)");
+      return;
+    }
     const filteredEntries = Object.entries(values).filter(
       ([_, v]) => v !== "" && v !== 0 && v !== undefined && v !== null,
     );

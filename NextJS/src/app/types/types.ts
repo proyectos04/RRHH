@@ -406,6 +406,7 @@ export interface EmployeeData {
   asignaciones: InfoCode[];
   encargadurias: PrestamoCargoData[];
   correo: string | null;
+  carnet_patria: string | null;
   telefono_habitacion: string | null;
   telefono_movil: string | null;
 }
@@ -434,6 +435,7 @@ export interface EmployeeInfo {
   formacion_academica: AcademyLevel;
   antecedentes: Background[];
   formacion_complementaria: SupplementaryTraining[];
+  carnet_patria: string | null;
   fecha_actualizacion: string;
 }
 export interface Code {

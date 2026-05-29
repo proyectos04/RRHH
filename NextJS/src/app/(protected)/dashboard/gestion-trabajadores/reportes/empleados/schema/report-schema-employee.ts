@@ -55,6 +55,9 @@ export const schemaReportEmployee = z.object({
       municipio_id: z.number().optional(),
       parroquia_id: z.number().optional(),
       condicion_vivienda_id: z.number().optional(),
+      capacitacion_id: z.number().optional(),
+      procedencia_id: z.number().optional(),
+      grupo_id: z.number().optional(),
     })
     .optional(),
 });

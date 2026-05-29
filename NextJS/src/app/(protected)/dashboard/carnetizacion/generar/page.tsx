@@ -25,6 +25,14 @@ import { schemaGenerar } from "../schemas/schemaGenerar";
 import type { EmployeeCarnet, MotivoOption } from "../types/carnetizacion";
 import type { z } from "zod";
 
+function truncarNombre(nombreCompleto: string): string {
+  const partes = nombreCompleto.trim().split(/\s+/);
+  if (partes.length <= 3) return nombreCompleto;
+  const nombres = partes.slice(0, 2);
+  const apellidos = partes.slice(-2);
+  return [...nombres, ...apellidos].join(" ");
+}
+
 type GenerarValues = z.infer<typeof schemaGenerar>;
 
 function downloadPdfBase64(base64: string, filename: string) {
@@ -75,10 +83,10 @@ function GenerarCarnetContent() {
   useEffect(() => {
     if (!employee || !motivos?.length) return;
     form.reset({
-      nombre: employee.nombre_completo,
+      nombre: truncarNombre(employee.nombre_completo),
       motivo_id: motivos[0].id,
     });
-    actualizarVistaPrevia(cedula, employee.nombre_completo).then((result) => {
+    actualizarVistaPrevia(cedula, truncarNombre(employee.nombre_completo)).then((result) => {
       if (result.success && result.vista_previa) {
         setVistaPrevia(result.vista_previa);
       }
@@ -154,7 +162,7 @@ function GenerarCarnetContent() {
   return (
     <PageLayout
       title="Generar Carnet"
-      description={`Procesando carnet para: ${employee?.nombre_completo || cedula}`}
+      description={`Procesando carnet para: ${employee ? truncarNombre(employee.nombre_completo) : cedula}`}
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
         <Card>

@@ -38,6 +38,7 @@ export const schemaEmployeeEdit = z.object({
   nivelAcademico: z.number(),
   parroquiaid: z.number(),
   direccionExacta: z.string(),
+  carnet_patria: z.string().optional(),
   fecha_nacimiento: z
     .date()
     .or(z.string())

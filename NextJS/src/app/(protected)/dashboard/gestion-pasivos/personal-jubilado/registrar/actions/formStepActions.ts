@@ -30,6 +30,7 @@ export async function registerEmployeeSteps(
     const {
       apellidos,
       cedulaidentidad,
+      carnet_patria,
       datos_vivienda,
       estadoCivil,
       fecha_nacimiento,
@@ -94,6 +95,7 @@ export async function registerEmployeeSteps(
 
     const payloadEmployee = {
       apellidos,
+      carnet_patria,
       cedulaidentidad,
       datos_vivienda,
       estadoCivil,

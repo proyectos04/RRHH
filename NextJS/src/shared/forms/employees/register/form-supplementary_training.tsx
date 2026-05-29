@@ -55,7 +55,7 @@ import {
   getTiposProcedencia,
   getCapacitaciones,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
-import { getInstituciones } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
+import { getInstituciones, getGruposCapacitacion } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 
 type Props = {
   onSubmit: (values: SupplementaryTrainingType) => void;
@@ -77,10 +77,14 @@ export default function FormSupplementaryTraining({
     "tiposProcedencia",
     async () => await getTiposProcedencia(),
   );
+  const { data: gruposCapacitacion } = useSWR(
+    "gruposCapacitacion",
+    async () => await getGruposCapacitacion(),
+  );
 
   const form = useForm({
     resolver: zodResolver(schemaSupplementaryTraining),
-    defaultValues,
+    values: defaultValues,
   });
   const { fields, append, remove } = useFieldArray({
     name: "formacion_complementaria",
@@ -129,15 +133,15 @@ export default function FormSupplementaryTraining({
                         {
                           fecha_inicio: undefined,
                           fecha_fin: undefined,
-                          institucion_id: undefined,
+                          institucion_id: 0,
                           nueva_institucion_nombre: undefined,
-                          capacitacion_id: undefined,
+                          capacitacion_id: 0,
                           nueva_capacitacion_nombre: undefined,
-                          procedencia_id: undefined,
+                          procedencia_id: 0,
                           horas_completadas: undefined,
                         },
                       ],
-                    } as SupplementaryTrainingType);
+                    } as any);
                   }}
                 >
                   <Trash />
@@ -155,11 +159,11 @@ export default function FormSupplementaryTraining({
                       append({
                         fecha_inicio: undefined,
                         fecha_fin: undefined,
-                        institucion_id: undefined,
+                        institucion_id: 0,
                         nueva_institucion_nombre: undefined,
-                        capacitacion_id: undefined,
+                        capacitacion_id: 0,
                         nueva_capacitacion_nombre: undefined,
-                        procedencia_id: undefined,
+                        procedencia_id: 0,
                         horas_completadas: undefined,
                       });
                     }}
@@ -178,6 +182,16 @@ export default function FormSupplementaryTraining({
                   `formacion_complementaria.${index}.capacitacion_id`,
                 );
                 const hasCapacitacion = watchedCapacitacionId != null && watchedCapacitacionId > 0;
+                const watchedProcedencia = form.watch(
+                  `formacion_complementaria.${index}.procedencia_id`,
+                );
+                const procedenciaSeleccionada = tiposProcedencia?.data?.find(
+                  (p) => p.id === watchedProcedencia,
+                );
+                const esExterna =
+                  procedenciaSeleccionada?.tipo_procedencia
+                    ?.toLowerCase()
+                    .includes("externa") ?? true;
 
                 return (
                 <div
@@ -439,7 +453,13 @@ export default function FormSupplementaryTraining({
                         <FormItem>
                           <FormLabel>Procedencia</FormLabel>
                           <Select
-                            onValueChange={(v) => field.onChange(Number(v))}
+                            onValueChange={(v) => {
+                              field.onChange(Number(v));
+                              form.setValue(
+                                `formacion_complementaria.${index}.grupo_id`,
+                                0,
+                              );
+                            }}
                             value={field.value?.toString() ?? ""}
                           >
                             <FormControl>
@@ -459,6 +479,35 @@ export default function FormSupplementaryTraining({
                         </FormItem>
                       )}
                     />
+                    {!esExterna && (
+                      <FormField
+                        control={form.control}
+                        name={`formacion_complementaria.${index}.grupo_id`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Grupo</FormLabel>
+                            <Select
+                              onValueChange={(v) => field.onChange(Number(v))}
+                              value={field.value?.toString() ?? ""}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-48">
+                                  <SelectValue placeholder="Seleccione" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {gruposCapacitacion?.data?.map((g) => (
+                                  <SelectItem key={g.id} value={g.id.toString()}>
+                                    {g.nombre_grupo}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
                     <FormField
                       control={form.control}
                       name={`formacion_complementaria.${index}.horas_completadas`}

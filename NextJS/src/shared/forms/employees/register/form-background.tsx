@@ -61,8 +61,7 @@ type Props = {
 export default function FormBackground({ onSubmit, defaultValues }: Props) {
   const form = useForm({
     resolver: zodResolver(schemaBackground),
-    defaultValues,
-    mode: "onChange",
+    values: defaultValues,
   })
   const { data: organismos } = useSWR(
     "organismos",
@@ -329,14 +328,18 @@ export default function FormBackground({ onSubmit, defaultValues }: Props) {
                       />
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    variant={"destructive"}
-                    className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
-                    onClick={() => remove(index)}
-                  >
-                    <X />
-                  </Button>
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-sm font-medium leading-none invisible">X</span>
+                    <Button
+                      type="button"
+                      variant={"destructive"}
+                      size="icon"
+                      className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                      onClick={() => remove(index)}
+                    >
+                      <X />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </ScrollArea>

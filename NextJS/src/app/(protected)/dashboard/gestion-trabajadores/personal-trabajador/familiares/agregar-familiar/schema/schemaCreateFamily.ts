@@ -60,6 +60,9 @@ export const schemaFamilyEmployeeOne = z.object({
       tallaZapatos: z.number({
         message: "Debe seleccionar una talla de zapatos",
       }),
+      tallaChaqueta: z.number({
+        message: "Debe seleccionar una talla de chaqueta",
+      }).optional(),
     })
     .optional(),
   formacion_academica_familiar: z.object({

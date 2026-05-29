@@ -48,7 +48,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatInTimeZone } from "date-fns-tz";
-import { useEffect, useTransition } from "react";
+import { useTransition } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import useSWR from "swr";
@@ -79,15 +79,12 @@ export default function FormUpdateBackground({
   );
   const form = useForm({
     resolver: zodResolver(schemaBackgroundUpdate),
-    defaultValues,
+    values: defaultValues,
   });
   const { fields, append, remove } = useFieldArray({
     name: "antecedentes",
     control: form.control,
   });
-  useEffect(() => {
-    form.reset(defaultValues);
-  }, [defaultValues, form]);
   const searchParams = useSearchStore((state) => state.searchParams);
   const onSubmitFormity = (values: z.infer<typeof schemaBackground>) => {
     startTransition(async () => {
@@ -357,14 +354,18 @@ export default function FormUpdateBackground({
                         />
                       </div>
                       </div>
-                      <Button
-                        type="button"
-                        variant={"destructive"}
-                        className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
-                        onClick={() => remove(index)}
-                      >
-                        <X />
-                      </Button>
+                      <div className="flex flex-col items-center gap-2">
+                        <span className="text-sm font-medium leading-none invisible">X</span>
+                        <Button
+                          type="button"
+                          variant={"destructive"}
+                          size="icon"
+                          className={`${index === 0 ? "invisible" : ""} cursor-pointer`}
+                          onClick={() => remove(index)}
+                        >
+                          <X />
+                        </Button>
+                      </div>
                     </div>
                   </>
                 ))}

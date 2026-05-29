@@ -229,16 +229,17 @@ export default function DetailInfoEmployee({ employee }: Props) {
                           mutate={mutate} updateInfoEmployee={updateInfoEmployee}
                           idEmployee={employee.id.toString()}
                           defaultValues={{
-                                                        antecedentes:
-                              employee.antecedentes?.map((ant) => ({
-                                institucion_id: ant.organismo?.id ?? undefined,
+                              antecedentes: employee.antecedentes?.length
+                                ? employee.antecedentes.map((ant) => ({
+                                  organismo_id: ant.organismo?.id ?? undefined,
                                 fecha_ingreso: ant.fecha_ingreso
                                   ? new Date(ant.fecha_ingreso)
                                   : undefined,
                                 fecha_egreso: ant.fecha_egreso
                                   ? new Date(ant.fecha_egreso)
                                   : undefined,
-                              })) ?? [],
+                              }))
+                              : [],
                           }}
                         />
                       </DialogContent>
@@ -318,15 +319,17 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     idEmployee={employee.id.toString()}
                     defaultValues={{
                                             antecedentes:
-                        employee.antecedentes?.map((ant) => ({
-                          institucion_id: ant.organismo?.id ?? undefined,
-                          fecha_ingreso: ant.fecha_ingreso
-                            ? new Date(ant.fecha_ingreso)
-                            : undefined,
-                          fecha_egreso: ant.fecha_egreso
-                            ? new Date(ant.fecha_egreso)
-                            : undefined,
-                        })) ?? [],
+                        employee.antecedentes?.length
+                          ? employee.antecedentes.map((ant) => ({
+                            organismo_id: ant.organismo?.id ?? undefined,
+                            fecha_ingreso: ant.fecha_ingreso
+                              ? new Date(ant.fecha_ingreso)
+                              : undefined,
+                            fecha_egreso: ant.fecha_egreso
+                              ? new Date(ant.fecha_egreso)
+                              : undefined,
+                          }))
+                          : [{ organismo_id: undefined, fecha_ingreso: undefined, fecha_egreso: undefined }],
                     }}
                   />
                 </DialogContent>
@@ -378,6 +381,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                   <div>Direccion De Habitación:</div>
                   <div>
                     {employee.datos_vivienda?.direccion_exacta ?? "N/A"}
+                  </div>
+                  <div>Código Postal:</div>
+                  <div>
+                    {employee.datos_vivienda?.codigo_postal ?? "N/A"}
                   </div>
                 </div>
               </CardContent>
@@ -486,9 +493,9 @@ export default function DetailInfoEmployee({ employee }: Props) {
                                 fecha_fin: v.fecha_fin
                                   ? new Date(v.fecha_fin)
                                   : undefined,
-                                institucion_id: v.institucion?.id ?? undefined,
-                                capacitacion_id: v.capacitacion?.id ?? undefined,
-                                procedencia_id: v.procedencia?.id ?? undefined,
+                                institucion_id: v.institucion?.id ?? 0,
+                                capacitacion_id: v.capacitacion?.id ?? 0,
+                                procedencia_id: v.procedencia?.id ?? 0,
                                 grupo_id: v.grupo?.id ?? undefined,
                                 horas_completadas: v.horas_completadas ?? undefined,
                               })),
@@ -580,9 +587,9 @@ export default function DetailInfoEmployee({ employee }: Props) {
                         {
                           fecha_inicio: undefined,
                           fecha_fin: undefined,
-                          institucion_id: undefined,
-                          capacitacion_id: undefined,
-                          procedencia_id: undefined,
+                          institucion_id: 0,
+                          capacitacion_id: 0,
+                          procedencia_id: 0,
                           grupo_id: undefined,
                           horas_completadas: undefined,
                         },
@@ -644,6 +651,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                     <div>
                       {employee.perfil_fisico?.tallaZapatos?.valor ?? "N/A"}
                     </div>
+                  </div>
+                  <div>Talla De Chaqueta:</div>
+                  <div>
+                    {employee.perfil_fisico?.tallaChaqueta?.valor ?? "N/A"}
                   </div>
                 </div>
               </CardContent>

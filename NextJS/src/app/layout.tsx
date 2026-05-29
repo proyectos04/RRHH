@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="w-full h-full ">
-      <title>SAGP</title>
+      <title>GAP</title>
       <body
         className={` antialiased  bg-no-repeat  bg-[url('/bg.jpg')] backdrop-blur-[8px] bg-cover object-center overflow-hidden  h-full`}
       >

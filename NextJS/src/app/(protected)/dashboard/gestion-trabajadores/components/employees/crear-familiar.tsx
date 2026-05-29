@@ -25,11 +25,14 @@ import {
   DisabilitysType,
   EmployeeData,
   PatologysType,
+  TallaItem,
 } from "@/app/types/types";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -77,6 +80,19 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import EmployeeSearchForm from "../employees/employee-search-form";
 import { EmployeeInfoBanner } from "@/shared/components/employee-info-banner";
 import { useEmployeeSearch } from "@/shared/hooks/useEmployeeSearch";
+
+function groupByRegion(tallas: TallaItem[]) {
+  return tallas.reduce(
+    (acc, item) => {
+      const codigo = item.region.codigo;
+      if (!acc[codigo]) acc[codigo] = [];
+      acc[codigo].push(item);
+      return acc;
+    },
+    {} as Record<string, TallaItem[]>,
+  );
+}
+
 export function CreateFamilyForm() {
   const [isPending, startTransition] = useTransition();
 
@@ -84,13 +100,14 @@ export function CreateFamilyForm() {
   const [mencionId, setMencionId] = useState<string>();
 
   const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [selectedNivelId, setSelectedNivelId] = useState<number>();
   const { data: academyLevel, isLoading: isLoadingAcademyLevel } = useSWR(
     "academyLevel",
     async () => await getAcademyLevel(),
   );
   const { data: carrera, isLoading: isLoadingCarrera } = useSWR(
-    "carrera",
-    async () => await getCarrera(),
+    selectedNivelId ? ["carrera", selectedNivelId] : null,
+    async () => await getCarrera(selectedNivelId || undefined),
   );
   const { data: mencion, isLoading: isLoadingMencion } = useSWR(
     mencionId ? ["mencion", mencionId] : null,
@@ -117,6 +134,7 @@ export function CreateFamilyForm() {
         tallaCamisa: 0,
         tallaPantalon: 0,
         tallaZapatos: 0,
+        tallaChaqueta: 0,
       },
       perfil_salud_familiar: {
         discapacidad: [],
@@ -133,7 +151,7 @@ export function CreateFamilyForm() {
     mode: "onSubmit",
   });
   const { data: tallas, isLoading: isLoadingTallas } = useSWR(
-    "tallas-family",
+    "tallas",
     async () => await getTallas(),
   );
 
@@ -153,6 +171,11 @@ export function CreateFamilyForm() {
     () => tallas?.data?.filter((t) => t.tipo_prenda.categoria === "Chaqueta") ?? [],
     [tallas],
   );
+
+  const camisasGrouped = useMemo(() => groupByRegion(camisas), [camisas]);
+  const pantalonesGrouped = useMemo(() => groupByRegion(pantalones), [pantalones]);
+  const zapatosGrouped = useMemo(() => groupByRegion(zapatos), [zapatos]);
+  const chaquetasGrouped = useMemo(() => groupByRegion(chaquetas), [chaquetas]);
 
   const { data: patology, isLoading: isLoadingPatology } = useSWR(
     "patology",
@@ -277,6 +300,8 @@ export function CreateFamilyForm() {
     control: form.control,
     name: "formacion_academica_familiar.nivel_Academico_id",
   });
+  const nivelSeleccionado = academyLevel?.data?.find(n => n.id === academyLevelId);
+  const esNoPosee = nivelSeleccionado?.nivelacademico?.toLowerCase().includes("no posee") || nivelSeleccionado?.nivelacademico?.toLowerCase() === "n/p";
 
   const { employee, isLoading: isLoadingSearch, hasSearched, search } =
     useEmployeeSearch<EmployeeData>({
@@ -602,12 +627,12 @@ export function CreateFamilyForm() {
                                           <FormLabel className="cursor-pointer">
                                             Orden de nacimiento
                                           </FormLabel>
-                                          <Select
-                                            onValueChange={(values) => {
-                                              field.onChange(
-                                                Number.parseInt(values),
-                                              );
-                                            }}
+                                      <Select
+                                        onValueChange={(values) => {
+                                          const id = Number.parseInt(values);
+                                          field.onChange(id);
+                                          setSelectedNivelId(id);
+                                        }}
                                           >
                                             <FormControl>
                                               <SelectTrigger className="w-full truncate">
@@ -795,7 +820,8 @@ export function CreateFamilyForm() {
                                       </Select>
                                       {!(
                                         academyLevelId == 1 ||
-                                        academyLevelId == 2
+                                        academyLevelId == 2 ||
+                                        esNoPosee
                                       ) && (
                                         <FormDescription className="flex flex-row gap-2 justify-end">
                                           <Label>
@@ -841,7 +867,7 @@ export function CreateFamilyForm() {
                                                 {carrera?.data.map((c, i) => (
                                                   <SelectItem key={i} value={`${c.id}`}>{c.nombre_carrera}</SelectItem>
                                                 ))}
-                                                {!!academyLevelId && academyLevelId > 0 && (
+                                                {!!academyLevelId && academyLevelId > 0 && !esNoPosee && (
                                                   <SelectItem value="-1">Otra</SelectItem>
                                                 )}
                                               </SelectContent>
@@ -1015,10 +1041,13 @@ export function CreateFamilyForm() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {camisas.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
-                                              {item.valor}
-                                            </SelectItem>
+                                          {Object.entries(camisasGrouped).map(([region, items]) => (
+                                            <SelectGroup key={region}>
+                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
+                                              {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
+                                              ))}
+                                            </SelectGroup>
                                           ))}
                                         </SelectContent>
                                       </Select>
@@ -1042,10 +1071,13 @@ export function CreateFamilyForm() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {pantalones.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
-                                              {item.valor}
-                                            </SelectItem>
+                                          {Object.entries(pantalonesGrouped).map(([region, items]) => (
+                                            <SelectGroup key={region}>
+                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
+                                              {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
+                                              ))}
+                                            </SelectGroup>
                                           ))}
                                         </SelectContent>
                                       </Select>
@@ -1070,10 +1102,43 @@ export function CreateFamilyForm() {
                                           </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                          {zapatos.map((item) => (
-                                            <SelectItem key={item.id} value={item.id.toString()}>
-                                              {item.valor}
-                                            </SelectItem>
+                                          {Object.entries(zapatosGrouped).map(([region, items]) => (
+                                            <SelectGroup key={region}>
+                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
+                                              {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
+                                              ))}
+                                            </SelectGroup>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`perfil_fisico_familiar.tallaChaqueta`}
+                                  render={({ field }) => (
+                                    <FormItem className="col-span-2">
+                                      <FormLabel>Talla De Chaqueta</FormLabel>
+                                      <Select
+                                        onValueChange={(v) => field.onChange(Number(v))}
+                                        value={field.value ? field.value.toString() : ""}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger className="w-full truncate">
+                                            <SelectValue placeholder={isLoadingTallas ? "Cargando..." : "Seleccione una talla"} />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {Object.entries(chaquetasGrouped).map(([region, items]) => (
+                                            <SelectGroup key={region}>
+                                              <SelectLabel className="text-xs font-bold text-muted-foreground">{region}</SelectLabel>
+                                              {items.map((item) => (
+                                                <SelectItem key={item.id} value={item.id.toString()}>{item.valor}</SelectItem>
+                                              ))}
+                                            </SelectGroup>
                                           ))}
                                         </SelectContent>
                                       </Select>

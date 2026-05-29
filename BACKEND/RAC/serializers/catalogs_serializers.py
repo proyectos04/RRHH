@@ -135,9 +135,18 @@ class MencionSerializer(serializers.ModelSerializer):
 
 
 class CapacitacionSerializer(serializers.ModelSerializer):
+    nombre_capacitacion = serializers.CharField(validators=[
+            UniqueValidator(
+                queryset=Capacitaciones.objects.all(),
+                message="La Capacitacion '{value}' ya se encuentra registrada"
+            )
+        ])
     class Meta:
         model = Capacitaciones
         fields = '__all__'
+        
+    def validate_nombre_capacitacion(self, value):
+        return value.strip().upper() 
 
 
 class GrupoCapacitacionSerializer(serializers.ModelSerializer):

@@ -24,11 +24,13 @@ import useSWR from "swr";
 import {
   getAcademyLevel,
   getBloodGroup,
+  getCapacitaciones,
   getCargo,
   getCargoEspecifico,
   getCarrera,
   getConditionDwelling,
   getDisability,
+  getGruposCapacitacion,
   getMencion,
   getMunicipalitys,
   getNominaPasivo,
@@ -39,6 +41,7 @@ import {
   getRegion,
   getSex,
   getStateByRegion,
+  getTiposProcedencia,
   postReportPasivo,
 } from "../../../../gestion-trabajadores/api/getInfoRac";
 
@@ -64,6 +67,7 @@ import {
 
 export default function ReportPasivo() {
   const [mencionId, setMencionId] = useState<string>();
+  const [nivelAcademicoId, setNivelAcademicoId] = useState<number>();
   const [regionId, setRegionId] = useState<number>(0);
 
   const [isPending, startTransition] = useTransition();
@@ -105,12 +109,24 @@ export default function ReportPasivo() {
     async () => await getAcademyLevel(),
   );
   const { data: carrera, isLoading: isLoadingCarrera } = useSWR(
-    "carrera",
-    async () => await getCarrera(),
+    ["carrera", nivelAcademicoId || 0],
+    async () => await getCarrera(nivelAcademicoId || undefined),
   );
   const { data: mencion, isLoading: isLoadingMencion } = useSWR(
     mencionId ? ["mencion", mencionId] : null,
     async () => await getMencion(mencionId!),
+  );
+  const { data: capacitaciones, isLoading: isLoadingCapacitaciones } = useSWR(
+    "capacitaciones",
+    async () => await getCapacitaciones(),
+  );
+  const { data: tiposProcedencia, isLoading: isLoadingTiposProcedencia } = useSWR(
+    "tiposProcedencia",
+    async () => await getTiposProcedencia(),
+  );
+  const { data: gruposCapacitacion, isLoading: isLoadingGrupos } = useSWR(
+    "gruposCapacitacion",
+    async () => await getGruposCapacitacion(),
   );
   const [municipalityId, setMunicipalityId] = useState<string>();
   const { data: region, isLoading: isLoadingRegion } = useSWR(
@@ -455,7 +471,9 @@ export default function ReportPasivo() {
                             <FormLabel>Nivel Academico</FormLabel>
                             <Select
                               onValueChange={(values) => {
-                                field.onChange(Number.parseInt(values));
+                                const id = Number.parseInt(values);
+                                field.onChange(id);
+                                setNivelAcademicoId(id);
                               }}
                             >
                               <FormControl>
@@ -531,6 +549,95 @@ export default function ReportPasivo() {
                                 {mencion?.data.map((mencion, i) => (
                                   <SelectItem key={i} value={`${mencion.id}`}>
                                     {mencion.nombre_mencion}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </fieldset>
+                    <fieldset className="flex flex-col gap-3 border-2 p-2 rounded-sm border-purple-700">
+                      <legend className="text-purple-700 font-semibold">
+                        Formación Complementaria
+                      </legend>
+                      <FormField
+                        control={form.control}
+                        name="filtros.capacitacion_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Capacitación</FormLabel>
+                            <Select
+                              onValueChange={(v) => field.onChange(Number.parseInt(v))}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full truncate">
+                                  <SelectValue
+                                    placeholder={isLoadingCapacitaciones ? "Cargando..." : "Seleccione"}
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {capacitaciones?.data?.map((c, i) => (
+                                  <SelectItem key={i} value={`${c.id}`}>
+                                    {c.nombre_capacitacion}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="filtros.procedencia_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Procedencia</FormLabel>
+                            <Select
+                              onValueChange={(v) => field.onChange(Number.parseInt(v))}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full truncate">
+                                  <SelectValue
+                                    placeholder={isLoadingTiposProcedencia ? "Cargando..." : "Seleccione"}
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {tiposProcedencia?.data?.map((p, i) => (
+                                  <SelectItem key={i} value={`${p.id}`}>
+                                    {p.tipo_procedencia}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="filtros.grupo_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Grupo</FormLabel>
+                            <Select
+                              onValueChange={(v) => field.onChange(Number.parseInt(v))}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="w-full truncate">
+                                  <SelectValue
+                                    placeholder={isLoadingGrupos ? "Cargando..." : "Seleccione"}
+                                  />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {gruposCapacitacion?.data?.map((g, i) => (
+                                  <SelectItem key={i} value={`${g.id}`}>
+                                    {g.nombre_grupo}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

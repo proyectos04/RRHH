@@ -121,10 +121,45 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
             return value
         
         empleado = self.instance
+
+        contratos_existentes = contratos.objects.filter(
+            antecedente_id__empleado_id=empleado
+        )
+        cantidad_actual = contratos_existentes.count()
+
         for item in value:
             inicio = item.get('fecha_ingreso')
             fin = item.get('fecha_culminacion')
             n_contrato_item = item.get('n_contrato')
+            politica_id = item.get('politica_id')
+
+            es_nuevo = not contratos.objects.filter(n_contrato=n_contrato_item).exists() if n_contrato_item else True
+
+            if es_nuevo:
+                if cantidad_actual >= 3:
+                    raise serializers.ValidationError(
+                        "El trabajador ya tiene 3 contratos registrados. No se pueden crear más contratos."
+                    )
+
+                hoy = date_type.today()
+                contrato_activo = contratos_existentes.filter(
+                    fecha_culminacion__isnull=True
+                ).first() or contratos_existentes.filter(
+                    fecha_culminacion__gte=hoy
+                ).first()
+                if contrato_activo:
+                    raise serializers.ValidationError(
+                        f"El trabajador ya tiene un contrato activo ({contrato_activo.n_contrato}). No se puede crear otro hasta que finalice."
+                    )
+
+                if not n_contrato_item and politica_id:
+                    cedula = str(empleado.cedulaidentidad)
+                    politica = politicas.objects.filter(id=politica_id).first()
+                    inicial = politica.tipo_politica[0].upper() if politica else 'C'
+                    nuevo_numero = cantidad_actual + 1
+                    n_contrato_item = f"{inicial}-{cedula}-{str(nuevo_numero).zfill(2)}"
+                    item['n_contrato'] = n_contrato_item
+
             if not inicio:
                 continue
             fin = fin or date_type.today()

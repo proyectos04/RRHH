@@ -69,7 +69,7 @@ export function PasivoForm() {
     },
   });
 
-  const { employee, isLoading, hasSearched, search } = useEmployeeSearch<EmployeeData>({
+  const { employee, isLoading, hasSearched, search, clear } = useEmployeeSearch<EmployeeData>({
     searchFn: getEmployeeById,
   });
 
@@ -83,6 +83,7 @@ export function PasivoForm() {
         if (response.success) {
           toast.success(response.message);
           form.reset();
+          clear();
         } else {
           toast.error(response.message);
         }

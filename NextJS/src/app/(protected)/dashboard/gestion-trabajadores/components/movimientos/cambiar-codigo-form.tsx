@@ -91,6 +91,10 @@ export function ChangeCodeForm() {
   );
 
   const onSearch = (values: z.infer<typeof schemaSearch>) => {
+    if (values.dependencia_id && values.dependencia_id > 0 && (!values.direccion_general_id || values.direccion_general_id === 0)) {
+      toast.error("Debe seleccionar una Gerencia u Oficina (Dirección General)");
+      return;
+    }
     const filteredEntries = Object.entries(values).filter(
       ([_, v]) => v !== "" && v !== 0 && v !== undefined && v !== null,
     );
@@ -113,7 +117,7 @@ export function ChangeCodeForm() {
     resolver: zodResolver(schemaSearch),
   });
 
-  const { employee, isLoading: isLoadingSearch, hasSearched, search } =
+  const { employee, isLoading: isLoadingSearch, hasSearched, search, clear } =
     useEmployeeSearch<EmployeeData>({
       searchFn: getEmployeeById,
     });
@@ -127,6 +131,15 @@ export function ChangeCodeForm() {
           motivo: 0,
           nuevo_cargo_id: 0,
         });
+        form.reset({
+          codigo: "",
+          tipo_nomina: undefined,
+          coordinacion_id: 0,
+          dependencia_id: 0,
+          direccion_general_id: 0,
+          direccion_linea_id: 0,
+        });
+        clear();
       } else {
         toast.error(response.message);
       }
