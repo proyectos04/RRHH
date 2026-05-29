@@ -57,6 +57,13 @@ export function LoginForm({
 
   const [isChangingPass, startChangePass] = useTransition();
 
+  const getRedirectPath = (session: any) => {
+    if (session?.user?.role?.nombre_rol === "AUTOGESTION") {
+      return "/dashboard/autogestion";
+    }
+    return "/dashboard";
+  };
+
   async function onSubmit(values: z.infer<typeof signInSchema>) {
     setError(null);
     startTransition(async () => {
@@ -70,7 +77,7 @@ export function LoginForm({
           setUserId(session.user.id);
           setShowChangePassword(true);
         } else {
-          router.push("/dashboard");
+          router.push(getRedirectPath(session));
         }
       }
     });
@@ -82,7 +89,7 @@ export function LoginForm({
       if (response.success) {
         await updateSession();
         setShowChangePassword(false);
-        router.push("/dashboard");
+        router.push("/dashboard/autogestion");
       } else {
         changeForm.setError("new_password", {
           message: response.message || "Error al cambiar la contraseña",

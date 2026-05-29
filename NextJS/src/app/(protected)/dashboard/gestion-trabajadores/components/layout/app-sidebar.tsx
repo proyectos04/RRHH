@@ -16,6 +16,7 @@ import {
   ContactRound,
   DoorOpen,
   FileChartLine,
+  FileSpreadsheet,
   FolderOpenDot,
   Home,
   IdCard,
@@ -328,7 +329,19 @@ const items: MenuItem[] = [
   {
     icon: BookCheck,
     title: "Autogestión",
-    url: "/dashboard/autogestion",
+    url: "#",
+    subMenu: [
+      {
+        title: "Formulario",
+        url: "/dashboard/autogestion",
+        icon: BookCheck,
+      },
+      {
+        title: "Respuestas Encuesta",
+        url: "/dashboard/autogestion/consultar",
+        icon: FileSpreadsheet,
+      },
+    ],
   },
 ];
 

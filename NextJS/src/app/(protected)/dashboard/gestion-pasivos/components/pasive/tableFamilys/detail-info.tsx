@@ -43,12 +43,15 @@ interface DocsResponse {
 interface Props {
   family: Family;
 }
-const fetcher = (url: string) => fetch(url).then(r => r.json());
 export function DetailInfoFamily({ family }: Props) {
   const { mutate } = useSWRConfig();
   const { data: docsData } = useSWR<DocsResponse>(
-    `${process.env.NEXT_PUBLIC_DJANGO_API_URL}Employeefamily/${family.id}/documentos/list/`,
-    fetcher,
+    family.id ? `Employeefamily/${family.id}/documentos/list/` : null,
+    async (url: string) => {
+      const { apiFetchGet } = await import("@/lib/utils");
+      const res = await apiFetchGet<any>(url);
+      return res;
+    },
   );
   const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (
