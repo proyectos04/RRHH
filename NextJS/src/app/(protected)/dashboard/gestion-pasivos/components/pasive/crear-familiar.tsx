@@ -268,29 +268,24 @@ export function CreateFamilyPasiveForm() {
       );
       if (response.success) {
         const familiarId = response.data?.id;
-        if (familiarId) {
-          const uploadFile = async (file: File, tipo: string) => {
-            const formData = new FormData();
-            formData.append("document_type", tipo);
-            formData.append("file", file);
-            try {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_DJANGO_API_URL}Employeefamily/${familiarId}/documentos/`,
-                { method: "POST", body: formData },
-              );
-              if (!res.ok) {
-                const err = await res.json();
-                console.error(`Error subiendo ${tipo}:`, err);
-              }
-            } catch (e) {
-              console.error(`Error subiendo ${tipo}:`, e);
+        if (familiarId && (data.file_cedula || data.file_partida_nacimiento)) {
+          try {
+            const uploadDoc = async (file: File, tipo: string) => {
+              const fd = new FormData();
+              fd.append("familiarId", String(familiarId));
+              fd.append("document_type", tipo);
+              fd.append("file", file);
+              const { uploadFamilyDocument } = await import("../../../gestion-trabajadores/components/employees/tableFamilys/actions/upload-document");
+              await uploadFamilyDocument(fd);
+            };
+            if (data.file_cedula) {
+              await uploadDoc(data.file_cedula, "cedula");
             }
-          };
-          if (data.file_cedula) {
-            uploadFile(data.file_cedula, "cedula");
-          }
-          if (data.file_partida_nacimiento) {
-            uploadFile(data.file_partida_nacimiento, "partida_nacimiento");
+            if (data.file_partida_nacimiento) {
+              await uploadDoc(data.file_partida_nacimiento, "partida_nacimiento");
+            }
+          } catch (e) {
+            console.error("Error subiendo documentos:", e);
           }
         }
         toast.success(response.message);
