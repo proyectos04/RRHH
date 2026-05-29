@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetchFormData } from "@/lib/api-client";
 import {
   getAcademyLevel,
   getAllergies,
@@ -270,14 +271,7 @@ export function CreateFamilyForm() {
             formData.append("document_type", tipo);
             formData.append("file", file);
             try {
-              const res = await fetch(
-                `${process.env.NEXT_PUBLIC_DJANGO_API_URL}Employeefamily/${familiarId}/documentos/`,
-                { method: "POST", body: formData },
-              );
-              if (!res.ok) {
-                const err = await res.json();
-                console.error(`Error subiendo ${tipo}:`, err);
-              }
+              await apiFetchFormData(`Employeefamily/${familiarId}/documentos/`, formData);
             } catch (e) {
               console.error(`Error subiendo ${tipo}:`, e);
             }

@@ -32,25 +32,21 @@ import FormRelationship from "./updateInfo/form/form-relationship";
 import UpdateBasicInfoFamily from "./updateInfo/form/form-update-info";
 import { useSWRConfig } from "swr";
 import useSWR from "swr";
+import { apiFetchGet } from "@/lib/utils";
 interface FamilyDocument {
   id: number;
   document_type: string;
   file: string;
   uploaded_at: string;
 }
-interface DocsResponse {
-  status: string;
-  data: FamilyDocument[];
-}
 interface Props {
   family: Family;
 }
-const fetcher = (url: string) => fetch(url).then(r => r.json());
 export function DetailInfoFamily({ family }: Props) {
   const { mutate } = useSWRConfig();
-  const { data: docsData } = useSWR<DocsResponse>(
-    `${process.env.NEXT_PUBLIC_DJANGO_API_URL}Employeefamily/${family.id}/documentos/list/`,
-    fetcher,
+  const { data: docsData } = useSWR(
+    `Employeefamily/${family.id}/documentos/list/`,
+    apiFetchGet<FamilyDocument[]>,
   );
   const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (

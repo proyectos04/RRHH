@@ -1,10 +1,7 @@
 "use server";
 
 import { auth } from "#/auth";
-import { cookies } from "next/headers";
-import { apiFetch } from "@/lib/api-client";
-
-const API_URL = process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER;
+import { apiFetch, apiFetchFormData } from "@/lib/api-client";
 
 export async function subirPlantilla(nombre: string, imagen: File) {
   try {
@@ -12,17 +9,11 @@ export async function subirPlantilla(nombre: string, imagen: File) {
     if (!session?.user?.id) {
       return { success: false as const, message: "No tienes permiso para realizar esta acción. Inicia sesión." };
     }
-    const cookieStore = await cookies();
-    const token = cookieStore.get("dj_access")?.value;
     const formData = new FormData();
     formData.append("nombre", nombre.trim());
     formData.append("imagen", imagen);
-    const res = await fetch(`${API_URL}carnetizacion/api/plantillas/crear/`, {
-      method: "POST",
-      body: formData,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
-    if (res.ok) return { success: true as const, message: "Plantilla subida exitosamente" };
+    const res = await apiFetchFormData<{ success?: boolean }>("carnetizacion/api/plantillas/crear/", formData);
+    if (res) return { success: true as const, message: "Plantilla subida exitosamente" };
     return { success: false as const, message: "Error al subir la plantilla" };
   } catch {
     return { success: false as const, message: "Error al subir la plantilla" };

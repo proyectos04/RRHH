@@ -33,6 +33,8 @@ import {
 
 import {
   getAcademyLevel,
+  getMunicipalitys,
+  getParish,
   getStates,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 import { updateEmployee } from "@/app/(protected)/dashboard/gestion-trabajadores/personal-trabajador/actions/updateEmployee";
@@ -88,21 +90,6 @@ export function EmployeeEditModal({
     message: "",
     data: [],
   });
-  const getMunicipalitys = async (id: number) => {
-    const responseMunicipalitys = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL}direccion/municipios/${id}/`,
-    );
-    const getMunicipalitys = await responseMunicipalitys.json();
-    setMunicipalitys(getMunicipalitys);
-  };
-
-  const getParish = async (id: number) => {
-    const responseParish = await fetch(
-      `${process.env.NEXT_PUBLIC_DJANGO_API_URL}direccion/parroquias/${id}/`,
-    );
-    const getParish = await responseParish.json();
-    setParish(getParish);
-  };
   useEffect(() => {
     const loadData = async () => {
       const [states, academyLevel] = await Promise.all([
@@ -244,9 +231,11 @@ export function EmployeeEditModal({
                     <FormItem className=" ">
                       <FormLabel>Estado</FormLabel>
                       <Select
-                        onValueChange={(value) => {
+                        onValueChange={async (value) => {
                           field.onChange(Number.parseInt(value));
-                          getMunicipalitys(Number.parseInt(value));
+                          setMunicipalitys(
+                            await getMunicipalitys(String(value)),
+                          );
                         }}
                       >
                         <FormControl>
@@ -259,7 +248,11 @@ export function EmployeeEditModal({
                             <SelectItem
                               key={i}
                               value={`${state.id}`}
-                              onClick={() => getMunicipalitys(state.id)}
+                              onClick={async () =>
+                                setMunicipalitys(
+                                  await getMunicipalitys(String(state.id)),
+                                )
+                              }
                             >
                               {state.estado}
                             </SelectItem>
@@ -282,9 +275,9 @@ export function EmployeeEditModal({
                       <FormItem className=" ">
                         <FormLabel>Municpio</FormLabel>
                         <Select
-                          onValueChange={(value) => {
+                          onValueChange={async (value) => {
                             field.onChange(Number.parseInt(value));
-                            getParish(Number.parseInt(value));
+                            setParish(await getParish(String(value)));
                           }}
                         >
                           <FormControl>

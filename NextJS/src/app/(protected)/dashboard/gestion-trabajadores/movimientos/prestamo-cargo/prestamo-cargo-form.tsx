@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatInTimeZone } from "date-fns-tz";
 import { toast } from "sonner";
+import { apiFetch } from "@/lib/api-client";
 import useSWR from "swr";
 import { Search, ChevronDownIcon, Eraser } from "lucide-react";
 import z from "zod";
@@ -226,11 +227,10 @@ export function PrestamoCargoForm() {
     if (!employee?.data || Array.isArray(employee.data)) return;
     setSavingContrato(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_DJANGO_API_URL_SERVER}Employee/${employee.data.id}/`,
+      const json = await apiFetch<{ status: string; message?: string }>(
+        `Employee/${employee.data.id}/`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             usuario_id: employee.data.id,
             contrato: [
@@ -246,7 +246,6 @@ export function PrestamoCargoForm() {
           }),
         },
       );
-      const json = await res.json();
       if (json.status === "success") {
         toast.success("Contrato registrado correctamente");
         setHasActiveContrato(true);
