@@ -89,7 +89,7 @@ export default function AutogestionLayout({
       <MiniSidebar />
       <SidebarInset className="bg-transparent">
         <HeaderLayout
-          title="Sistema Automatizado De Gestión De Personal - SAGP"
+          title="Gestión Administrativa de Talento Humano - GATH"
           subtitle="Autogestión de Personal"
         >
           <SidebarTrigger className="text-black-600 scale-110" />

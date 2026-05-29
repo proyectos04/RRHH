@@ -15,7 +15,7 @@ export default function ProtectedLayout({
       <AppSidebarEmployees />
       <SidebarInset className="bg-transparent">
         <HeaderLayout
-          title="Sistema Automatizado De Gestión De Personal - SAGP"
+          title="Gestión Administrativa de Talento Humano - GATH"
           subtitle="Gestiona y Visualiza la Información de los Trabajadores en Conatel"
         >
           <SidebarTrigger className="text-black-600   scale-110" />

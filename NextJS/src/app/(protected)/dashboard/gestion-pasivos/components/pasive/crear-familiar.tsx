@@ -285,7 +285,10 @@ export function CreateFamilyPasiveForm() {
               fd.append("file", file);
               const { uploadFamilyDocument } =
                 await import("../../../gestion-trabajadores/components/employees/tableFamilys/actions/upload-document");
-              await uploadFamilyDocument(fd);
+              const result = await uploadFamilyDocument(fd);
+              if (!result.success) {
+                console.error(`Error subiendo ${tipo}:`, result.message);
+              }
             };
             if (data.file_cedula) {
               await uploadDoc(data.file_cedula, "cedula");

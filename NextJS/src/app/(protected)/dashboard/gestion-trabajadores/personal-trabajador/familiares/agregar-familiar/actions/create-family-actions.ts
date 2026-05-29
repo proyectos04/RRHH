@@ -41,7 +41,7 @@ export default async function createFamilyActions(
     );
 
     return {
-      success: getResponse.status === "success",
+      success: getResponse.status === "Ok",
       message: getResponse.message,
       data: getResponse.data,
     };

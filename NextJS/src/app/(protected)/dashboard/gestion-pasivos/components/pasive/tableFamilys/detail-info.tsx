@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { useSWRConfig } from "swr";
 import useSWR from "swr";
-import { apiFetchGet } from "@/lib/utils";
+import { getFamilyDocuments } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 interface FamilyDocument {
   id: number;
   document_type: string;
@@ -50,8 +50,8 @@ interface Props {
 export function DetailInfoFamily({ family }: Props) {
   const { mutate } = useSWRConfig();
   const { data: docsData } = useSWR(
-    `Employeefamily/${family.id}/documentos/list/`,
-    apiFetchGet<FamilyDocument[]>,
+    `family-docs-${family.id}`,
+    async () => getFamilyDocuments(family.id),
   );
   const DJANGO_BASE =
     process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";

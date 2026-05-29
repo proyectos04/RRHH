@@ -237,7 +237,7 @@ export default function ConsultarCensoPage() {
                               Detalle del Censo — {emp.nombres} {emp.apellidos}
                             </SheetTitleUI>
                           </SheetHeaderUI>
-                          <ScrollArea className="h-[80vh] pr-4">
+                          <ScrollArea className="h-[80vh] px-4 pb-4">
                             <DetalleCenso empleado={emp} />
                           </ScrollArea>
                         </SheetContentUI>

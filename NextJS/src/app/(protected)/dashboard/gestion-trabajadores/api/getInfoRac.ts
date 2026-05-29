@@ -485,6 +485,12 @@ export const getFamilyEmployee = async ({
   return await apiFetchGet<Family[]>(url);
 };
 
+export const getFamilyDocuments = async (
+  familyId: number,
+): Promise<ApiResponse<{ id: number; document_type: string; file: string; uploaded_at: string }[]>> => {
+  return await apiFetchGet(`Employeefamily/${familyId}/documentos/list/`);
+};
+
 export const getMotivosEncargaduria = async (): Promise<
   ApiResponse<MotivoEncargaduria[]>
 > => {
