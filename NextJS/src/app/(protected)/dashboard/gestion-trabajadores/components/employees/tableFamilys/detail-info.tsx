@@ -3,7 +3,13 @@ import { Family } from "@/app/types/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   SheetContentUI,
@@ -23,7 +29,12 @@ import {
 } from "@/components/ui/table";
 import { format } from "date-fns";
 import {
-  GraduationCap, Heart, PersonStanding, Shirt, FileDown, FileText
+  GraduationCap,
+  Heart,
+  PersonStanding,
+  Shirt,
+  FileDown,
+  FileText,
 } from "lucide-react";
 import UpdateFormAcademy from "./updateInfo/form/form-academy-update";
 import FormUpdateHealthFamily from "./updateInfo/form/form-health_profile";
@@ -32,30 +43,24 @@ import FormRelationship from "./updateInfo/form/form-relationship";
 import UpdateBasicInfoFamily from "./updateInfo/form/form-update-info";
 import { useSWRConfig } from "swr";
 import useSWR from "swr";
+import { getFamilyDocuments } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 interface FamilyDocument {
   id: number;
   document_type: string;
   file: string;
   uploaded_at: string;
 }
-interface DocsResponse {
-  status: string;
-  data: FamilyDocument[];
-}
 interface Props {
   family: Family;
 }
 export function DetailInfoFamily({ family }: Props) {
   const { mutate } = useSWRConfig();
-  const { data: docsData } = useSWR<DocsResponse>(
-    family.id ? `Employeefamily/${family.id}/documentos/list/` : null,
-    async (url: string) => {
-      const { apiFetchGet } = await import("@/lib/utils");
-      const res = await apiFetchGet<any>(url);
-      return res;
-    },
+  const { data: docsData } = useSWR(
+    `family-docs-${family.id}`,
+    async () => getFamilyDocuments(family.id),
   );
-  const DJANGO_BASE = process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
+  const DJANGO_BASE =
+    process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace(/\/api\/?$/, "") || "";
   return (
     <SheetUI>
       <SheetTriggerUI asChild>
@@ -65,8 +70,8 @@ export function DetailInfoFamily({ family }: Props) {
         <SheetHeaderUI>
           <SheetTitleUI>Información Detallada Del Familiar</SheetTitleUI>
         </SheetHeaderUI>
-        <ScrollArea className="space-y-5 h-[90%]">
-          <div className="space-y-5">
+        <ScrollArea className="gap-5 h-[90%]">
+          <div className="gap-5">
             <Card>
               <CardHeader className="flex justify-between">
                 <div className="flex flex-row justify-between gap-2">
@@ -197,9 +202,9 @@ export function DetailInfoFamily({ family }: Props) {
                   </div>
                   <div>Institución:</div>
                   <div>
-                    {family.formacion_academica_familiar?.institucion?.nombre_institucion ?? "N/A"}
+                    {family.formacion_academica_familiar?.institucion
+                      ?.nombre_institucion ?? "N/A"}
                   </div>
-
                 </div>
               </CardContent>
             </Card>
@@ -366,14 +371,16 @@ export function DetailInfoFamily({ family }: Props) {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-2 text-blue-600 hover:underline"
                     >
-                      <FileDown className="h-4 w-4" />
+                      <FileDown className="size-4" />
                       {doc.document_type === "cedula"
                         ? "Ver Cédula del Familiar"
                         : "Ver Partida de Nacimiento"}
                     </a>
                   ))}
                   {(!docsData?.data || docsData.data.length === 0) && (
-                    <span className="text-gray-400 text-sm">No hay documentos subidos</span>
+                    <span className="text-gray-400 text-sm">
+                      No hay documentos subidos
+                    </span>
                   )}
                 </div>
               </CardContent>

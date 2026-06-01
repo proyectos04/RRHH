@@ -58,7 +58,12 @@ export default function FamilyConsultPasive() {
         : "",
     };
     const filteredEntries = Object.entries(payload).filter(
-      ([_, v]) => v !== "" && v !== 0 && v !== undefined && v !== null,
+      ([_, v]) =>
+        v !== "" &&
+        v !== 0 &&
+        v !== undefined &&
+        v !== null &&
+        !Number.isNaN(v),
     );
     const params = new URLSearchParams(filteredEntries as unknown as string);
     setSearchParams(params.toString());

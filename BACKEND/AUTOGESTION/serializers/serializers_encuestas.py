@@ -7,10 +7,10 @@ from AUTOGESTION.models.models_encuestas import (
     OpcionesPregunta,
     RespuestasEncuesta,
 )
-from RAC.models.personal_models import Employee, contratos
 from RAC.serializers.catalogs_serializers import DatosViviendaSerializer
 from RAC.serializers.personal_activo_serializers import ListerCodigosSerializer
 from RAC.services.profile_services import upsert_vivienda
+from RAC.utils.tiempo_servicio import calcular_total_apn
 
 
 class TipoPreguntaSerializer(serializers.ModelSerializer):
@@ -43,6 +43,54 @@ class RespuestaEncuestaSerializer(serializers.ModelSerializer):
     class Meta:
         model = RespuestasEncuesta
         fields = ["id", "pregunta", "empleado", "opcion", "respuesta"]
+
+
+class CensoEmpleadoSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    cedula = serializers.CharField(source="cedulaidentidad")
+    nombres = serializers.CharField()
+    apellidos = serializers.CharField()
+    fecha_nacimiento = serializers.SerializerMethodField()
+    carnet_patria = serializers.CharField()
+    cargos = ListerCodigosSerializer(many=True, source="assignments")
+    datos_vivienda = serializers.SerializerMethodField()
+    total_apn = serializers.SerializerMethodField()
+    fecha_ingreso_organismo = serializers.SerializerMethodField()
+    preguntas = serializers.SerializerMethodField()
+
+    def get_fecha_nacimiento(self, obj):
+        return obj.fecha_nacimiento.isoformat() if obj.fecha_nacimiento else None
+
+    def get_datos_vivienda(self, obj):
+        vivienda = obj.datos_vivienda_set.first()
+        if vivienda:
+            return DatosViviendaSerializer(vivienda).data
+        return None
+
+    def get_total_apn(self, obj):
+        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
+        return calcular_total_apn(cerrados)
+
+    def get_fecha_ingreso_organismo(self, obj):
+        primera = obj.antecedentes_servicio_set.order_by("fecha_ingreso").first()
+        if primera and primera.fecha_ingreso:
+            return primera.fecha_ingreso.isoformat()
+        return None
+
+    def get_preguntas(self, obj):
+        respuestas = RespuestasEncuesta.objects.filter(
+            empleado=obj
+        ).select_related("pregunta__tipo", "opcion")
+        return [
+            {
+                "id": r.pregunta_id,
+                "pregunta": r.pregunta.enunciado,
+                "tipo": r.pregunta.tipo.nombre,
+                "opcion": {"id": r.opcion_id, "opcion": r.opcion.tipo_opcion} if r.opcion else None,
+                "respuesta": r.respuesta,
+            }
+            for r in respuestas
+        ]
 
 
 class RespuestaEncuestaItemSerializer(serializers.Serializer):
@@ -113,88 +161,3 @@ class CensoViviendaSubmitSerializer(serializers.Serializer):
             )
 
         return validated_data
-
-
-class ConsultarCensoSerializer(serializers.ModelSerializer):
-    cedula = serializers.CharField(source="cedulaidentidad", read_only=True)
-    cargos = serializers.SerializerMethodField()
-    datos_vivienda = serializers.SerializerMethodField()
-    total_apn = serializers.SerializerMethodField()
-    fecha_ingreso_organismo = serializers.SerializerMethodField()
-    preguntas = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Employee
-        fields = [
-            "id",
-            "cedula",
-            "nombres",
-            "apellidos",
-            "fecha_nacimiento",
-            "carnet_patria",
-            "cargos",
-            "datos_vivienda",
-            "total_apn",
-            "fecha_ingreso_organismo",
-            "preguntas",
-        ]
-
-    def get_cargos(self, obj):
-        asignaciones = obj.assignments.select_related(
-            "denominacioncargoid",
-            "denominacioncargoespecificoid",
-            "gradoid",
-            "tiponominaid",
-            "OrganismoAdscritoid",
-            "tipo_procedencia",
-            "Dependencia",
-            "DireccionGeneral",
-            "DireccionLinea",
-            "Coordinacion",
-            "estatusid",
-        )
-        return ListerCodigosSerializer(asignaciones, many=True).data
-
-    def get_datos_vivienda(self, obj):
-        vivienda = obj.datos_vivienda_set.first()
-        return DatosViviendaSerializer(vivienda).data if vivienda else None
-
-    def get_total_apn(self, obj):
-        from RAC.utils.tiempo_servicio import calcular_total_apn
-
-        cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
-        return calcular_total_apn(cerrados)
-
-    def get_fecha_ingreso_organismo(self, obj):
-        contrato = (
-            contratos.objects.filter(antecedente_id__empleado_id=obj)
-            .select_related("antecedente_id")
-            .order_by("antecedente_id__fecha_ingreso")
-            .first()
-        )
-        return (
-            contrato.antecedente_id.fecha_ingreso
-            if contrato and contrato.antecedente_id
-            else None
-        )
-
-    def get_preguntas(self, obj):
-        respuestas = RespuestasEncuesta.objects.filter(empleado=obj).select_related(
-            "pregunta__tipo", "opcion"
-        )
-
-        return [
-            {
-                "id": r.pregunta_id,
-                "pregunta": r.pregunta.enunciado,
-                "tipo": r.pregunta.tipo.nombre,
-                "opcion": {
-                    "id": r.opcion_id,
-                    "opcion": r.opcion.tipo_opcion,
-                }
-                if r.opcion
-                else None,
-                "respuesta": r.respuesta,
-            }
-            for r in respuestas
-        ]
