@@ -57,7 +57,7 @@ export const loginAction = async (values: z.infer<typeof signInSchema>) => {
 };
 
 export const changePasswordAction = async (
-  userId: string,
+  userId: number,
   newPassword: string,
 ) => {
   try {

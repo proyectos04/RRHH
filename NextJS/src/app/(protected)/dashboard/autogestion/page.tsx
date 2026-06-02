@@ -44,7 +44,7 @@ import {
 import InputForm from "@/components/input-form";
 import RadioGroupForm from "@/components/form-radio-group";
 import CheckboxForm from "@/components/form-checkbox";
-import { Badge, ClipboardCheck, FileText, IdCard } from "lucide-react";
+import { Badge, Building2, ClipboardCheck, FileText, IdCard } from "lucide-react";
 
 interface DynamicFormValues extends FieldValues {
   [key: string]: string | boolean | number | { [key: string]: string | number };
@@ -153,8 +153,8 @@ export default function AutogestionPage() {
             ))}
           </div>
         ) : yaRespondio && !isDev ? (
-          <div className="max-w-3xl mx-auto gap-6">
-            <Card className="border-2 border-emerald-200 bg-emerald-50/50">
+          <div className="max-w-3xl mx-auto flex flex-col gap-6">
+            <Card className="border-2 border-emerald-200 bg-emerald-50">
               <CardContent className="p-8 text-center gap-4">
                 <div className="flex justify-center">
                   <div className="rounded-full bg-emerald-100 p-4">
@@ -171,20 +171,20 @@ export default function AutogestionPage() {
             </Card>
 
             {miCenso && (
-              <Card>
+              <Card className="mt-6">
                 <CardContent className="p-6 gap-4">
-                  <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                    <FileText className="size-5" />
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <FileText className="size-5 text-gray-600" />
                     Resumen de su Autogestión
                   </h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <IdCard className="size-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-gray-800">
+                      <IdCard className="size-4 text-gray-500" />
                       <span className="font-medium">Cédula:</span>
                       <span>{miCenso.cedula}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Badge className="size-4 text-gray-400" />
+                    <div className="flex items-center gap-2 text-gray-800">
+                      <Badge className="size-4 text-gray-500" />
                       <span className="font-medium">Carnet Patria:</span>
                       <span>{miCenso.carnet_patria || "No registrado"}</span>
                     </div>
@@ -193,22 +193,22 @@ export default function AutogestionPage() {
                   <Separator />
 
                   <div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
-                      <ClipboardCheck className="size-4" />
+                    <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                      <ClipboardCheck className="size-4 text-gray-600" />
                       <span className="font-medium">
                         Respuestas registradas ({miCenso.preguntas?.length || 0})
                       </span>
                     </div>
-                    <div className="max-h-64 overflow-y-auto gap-2">
+                    <div className="flex flex-col gap-2">
                       {miCenso.preguntas?.map((r, i) => (
                         <div
                           key={i}
                           className="flex items-start gap-2 text-sm bg-gray-50 rounded p-2"
                         >
-                          <span className="text-emerald-500 mt-0.5">•</span>
+                          <span className="text-emerald-600 mt-0.5">•</span>
                           <div>
-                            <p className="text-gray-700">{r.pregunta}</p>
-                            <p className="text-gray-400 text-xs">
+                            <p className="text-gray-900">{r.pregunta}</p>
+                            <p className="text-gray-600 text-xs">
                               {r.opcion ? r.opcion.opcion : r.respuesta || "—"}
                             </p>
                           </div>
@@ -216,6 +216,60 @@ export default function AutogestionPage() {
                       ))}
                     </div>
                   </div>
+
+                  {miCenso.cargos && miCenso.cargos.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                          <Building2 className="size-4 text-gray-600" />
+                          <span className="font-medium">
+                            Ubicaciones Administrativas ({miCenso.cargos.length})
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          {miCenso.cargos.map((cargo, i) => (
+                            <div
+                              key={i}
+                              className="text-sm bg-gray-50 rounded p-3 gap-1"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-gray-600 bg-gray-200 rounded px-1.5 py-0.5">
+                                  {cargo.codigo}
+                                </span>
+                                <span className="text-gray-900 font-medium">
+                                  {cargo.denominacioncargo.cargo}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-600 mt-1.5 ml-1 flex flex-col gap-0.5">
+                                {cargo.Dependencia && (
+                                  <span>{cargo.Dependencia.dependencia}</span>
+                                )}
+                                {cargo.DireccionGeneral && (
+                                  <span>
+                                    <span className="text-gray-500">{" > "}</span>
+                                    {cargo.DireccionGeneral.direccion_general}
+                                  </span>
+                                )}
+                                {cargo.DireccionLinea && (
+                                  <span>
+                                    <span className="text-gray-500">{" > "}</span>
+                                    {cargo.DireccionLinea.direccion_linea}
+                                  </span>
+                                )}
+                                {cargo.Coordinacion && (
+                                  <span>
+                                    <span className="text-gray-500">{" > "}</span>
+                                    {cargo.Coordinacion.coordinacion}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             )}

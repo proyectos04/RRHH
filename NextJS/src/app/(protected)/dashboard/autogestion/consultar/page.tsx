@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useSWR from "swr";
 import { z } from "zod";
-import { Download, Search, Eraser, Eye, Filter } from "lucide-react";
+import { Download, Search, Eraser, Eye, Filter, Building2 } from "lucide-react";
 import { toast } from "sonner";
 
 import PageLayout from "@/components/layout/page-layout";
@@ -65,57 +65,132 @@ const schemaSearch = z.object({
 
 function DetalleCenso({ empleado }: { empleado: CensoEmpleadoItem }) {
   return (
-    <div className="gap-4">
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <div className="font-medium">Cedula:</div>
-        <div>{empleado.cedula}</div>
-        <div className="font-medium">Nombres:</div>
-        <div>{empleado.nombres}</div>
-        <div className="font-medium">Apellidos:</div>
-        <div>{empleado.apellidos}</div>
-        <div className="font-medium">F. Nacimiento:</div>
-        <div>{empleado.fecha_nacimiento || "N/A"}</div>
-        <div className="font-medium">Carnet Patria:</div>
-        <div>{empleado.carnet_patria || "N/A"}</div>
-        <div className="font-medium">APN:</div>
-        <div>
-          {empleado.total_apn
-            ? `${empleado.total_apn.years}a ${empleado.total_apn.months}m ${empleado.total_apn.days}d`
-            : "N/A"}
+    <div className="gap-5">
+      <div className="bg-gray-50 rounded-lg p-4">
+        <h4 className="font-bold text-base text-gray-900 mb-3">Datos del Trabajador</h4>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div>
+            <span className="font-semibold text-gray-700">Cédula:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.cedula}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700">Carnet Patria:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.carnet_patria || "N/A"}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700">Nombres:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.nombres}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700">Apellidos:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.apellidos}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700">F. Nacimiento:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.fecha_nacimiento || "N/A"}</span>
+          </div>
+          <div>
+            <span className="font-semibold text-gray-700">F. Ingreso:</span>
+            <span className="ml-2 text-gray-900 font-medium">{empleado.fecha_ingreso_organismo || "N/A"}</span>
+          </div>
+          <div className="col-span-2">
+            <span className="font-semibold text-gray-700">Tiempo APN:</span>
+            <span className="ml-2 text-gray-900 font-medium">
+              {empleado.total_apn
+                ? `${empleado.total_apn.years}a ${empleado.total_apn.months}m ${empleado.total_apn.days}d`
+                : "N/A"}
+            </span>
+          </div>
         </div>
-        <div className="font-medium">F. Ingreso:</div>
-        <div>{empleado.fecha_ingreso_organismo || "N/A"}</div>
       </div>
 
       {empleado.datos_vivienda && (
-        <>
-          <Separator />
-          <h4 className="font-semibold text-sm">Datos de Vivienda</h4>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div className="font-medium">Direccion:</div>
-            <div>{empleado.datos_vivienda.direccion_exacta || "N/A"}</div>
-            <div className="font-medium">Codigo Postal:</div>
-            <div>{empleado.datos_vivienda.codigo_postal || "N/A"}</div>
+        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+          <h4 className="font-bold text-base text-blue-900 mb-3">Datos de Vivienda</h4>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="col-span-2">
+              <span className="font-semibold text-blue-800">Dirección:</span>
+              <span className="ml-2 text-blue-900 font-medium">{empleado.datos_vivienda.direccion_exacta || "N/A"}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-blue-800">Código Postal:</span>
+              <span className="ml-2 text-blue-900 font-medium">{empleado.datos_vivienda.codigo_postal || "N/A"}</span>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
-      <Separator />
-      <h4 className="font-semibold text-sm">
-        Respuestas ({empleado.preguntas?.length || 0})
-      </h4>
-      <ScrollArea className="h-64 rounded-md border p-2">
-        <div className="gap-2">
-          {empleado.preguntas?.map((p) => (
-            <Card key={p.id} className="p-2">
-              <p className="text-xs font-medium text-gray-700">{p.pregunta}</p>
-              <Badge variant="secondary" className="mt-1 text-xs">
-                {p.opcion?.opcion || p.respuesta || "—"}
-              </Badge>
-            </Card>
-          ))}
+      <div>
+        <h4 className="font-bold text-base text-gray-900 mb-3 flex items-center gap-2">
+          <span className="bg-emerald-100 text-emerald-700 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+            {empleado.preguntas?.length || 0}
+          </span>
+          Respuestas del Censo
+        </h4>
+        <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+          <div className="flex flex-col gap-3">
+            {empleado.preguntas?.map((p) => (
+              <Card key={p.id} className="p-3 border border-gray-200 bg-white shadow-sm">
+                <p className="text-sm font-semibold text-gray-900">{p.pregunta}</p>
+                <p className="text-sm text-gray-700 mt-1.5 font-medium">
+                  {p.opcion?.opcion || p.respuesta || "—"}
+                </p>
+              </Card>
+            ))}
+          </div>
         </div>
-      </ScrollArea>
+      </div>
+
+      {empleado.cargos && empleado.cargos.length > 0 && (
+        <div>
+          <h4 className="font-bold text-base text-gray-900 mb-3 flex items-center gap-2">
+            <Building2 className="size-5 text-gray-700" />
+            Ubicaciones Administrativas
+            <span className="bg-gray-200 text-gray-700 rounded-full px-2 py-0.5 text-xs font-bold">
+              {empleado.cargos.length}
+            </span>
+          </h4>
+          <div className="rounded-lg border border-gray-200 p-3 bg-gray-50">
+            <div className="flex flex-col gap-3">
+              {empleado.cargos.map((cargo, i) => (
+                <div key={i} className="bg-white rounded-lg p-3 border border-gray-200 shadow-sm">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-sm font-bold font-mono text-white bg-gray-700 rounded px-2 py-0.5">
+                      {cargo.codigo}
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
+                      {cargo.denominacioncargo.cargo}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-700 ml-1 flex flex-col gap-0.5 border-l-2 border-gray-300 pl-3">
+                    {cargo.Dependencia && (
+                      <span className="font-medium">{cargo.Dependencia.dependencia}</span>
+                    )}
+                    {cargo.DireccionGeneral && (
+                      <span>
+                        <span className="text-gray-500 font-medium">{" > "}</span>
+                        <span className="font-medium">{cargo.DireccionGeneral.direccion_general}</span>
+                      </span>
+                    )}
+                    {cargo.DireccionLinea && (
+                      <span>
+                        <span className="text-gray-500 font-medium">{" > "}</span>
+                        <span className="font-medium">{cargo.DireccionLinea.direccion_linea}</span>
+                      </span>
+                    )}
+                    {cargo.Coordinacion && (
+                      <span>
+                        <span className="text-gray-500 font-medium">{" > "}</span>
+                        <span className="font-medium">{cargo.Coordinacion.coordinacion}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -551,15 +626,15 @@ export default function ConsultarCensoPage() {
                               <Eye className="size-4 mr-1" /> Ver
                             </Button>
                           </SheetTriggerUI>
-                          <SheetContentUI>
+                          <SheetContentUI className="w-[600px] sm:max-w-xl overflow-y-auto">
                             <SheetHeaderUI>
                               <SheetTitleUI>
                                 Detalle del Censo: {emp.nombres} {emp.apellidos}
                               </SheetTitleUI>
                             </SheetHeaderUI>
-                            <ScrollArea className="h-[80vh] px-4 pb-4">
+                            <div className="px-4 pb-4 mt-4">
                               <DetalleCenso empleado={emp} />
-                            </ScrollArea>
+                            </div>
                           </SheetContentUI>
                         </SheetUI>
                       </TableCell>
