@@ -172,6 +172,28 @@ def _get_estatus_contratos():
     return result['activo'], result['por_vencer'], result['vencido']
 
 
+def _generar_n_contrato(empleado, politica_obj, cantidad_actual):
+    """
+    Genera el número de contrato con la nomenclatura oficial:
+        {inicial_politica}-{cedula}-{correlativo_zfill_2}
+
+    Ejemplos:
+        C-30540767-01   (1er contrato, política CONTRATADO)
+        C-30540767-02   (2do contrato)
+        C-30540767-03   (3er contrato → FIJO)
+
+    Este número SIEMPRE es generado por el backend.
+    Cualquier valor que envíe el frontend debe ser ignorado.
+    """
+    if hasattr(politica_obj, 'tipo_politica'):
+        inicial = politica_obj.tipo_politica[0].upper()
+    else:
+        inicial = 'C'
+    cedula = str(empleado.cedulaidentidad)
+    correlativo = str(cantidad_actual + 1).zfill(2)
+    return f"{inicial}-{cedula}-{correlativo}"
+
+
 def verificar_estatus_contrato(contrato):
     """
     Determina y guarda el estatus del contrato según sus fechas y modalidad.
@@ -180,10 +202,10 @@ def verificar_estatus_contrato(contrato):
     - Si es_fijo=True: siempre ACTIVO, fecha_culminacion se fuerza a NULL.
       El contrato fijo nunca vence hasta un egreso formal del empleado.
     - Si es_fijo=False:
-        · fecha_culminacion NULL         → ACTIVO
-        · fecha_culminacion < hoy        → VENCIDO (+ cierra antecedente)
-        · fecha_culminacion ≤ 30 días    → POR VENCER
-        · fecha_culminacion > 30 días    → ACTIVO
+        · fecha_culminacion NULL          → ACTIVO
+        · fecha_culminacion <= hoy        → VENCIDO (incluye el día de vencimiento)
+        · fecha_culminacion en ≤ 30 días  → POR VENCER
+        · fecha_culminacion en > 30 días  → ACTIVO
 
     Lanza ValueError si faltan estatus requeridos en la BD.
     """
@@ -200,7 +222,7 @@ def verificar_estatus_contrato(contrato):
     # --- Contrato temporal: calcular estatus por fecha ---
     if not contrato.fecha_culminacion:
         contrato.estatus_id = activo
-    elif contrato.fecha_culminacion < hoy:
+    elif contrato.fecha_culminacion <= hoy:   # BUG FIX: <= incluye el día mismo de vencimiento
         contrato.estatus_id = vencido
     elif (contrato.fecha_culminacion - hoy).days <= 30:
         contrato.estatus_id = por_vencer
@@ -220,6 +242,11 @@ def verificar_estatus_contrato(contrato):
 def upsert_contrato(empleado, contrato_data):
     """
     Crea o actualiza contratos para un empleado.
+
+    El n_contrato SIEMPRE es generado por el backend con _generar_n_contrato.
+    Si el item trae n_contrato, se usa solo para buscar si el contrato ya existe
+    en BD (actualización). Si no existe, se genera uno nuevo con el formato oficial:
+        {inicial_politica}-{cedula}-{correlativo_02}
 
     Regla FIJO: al registrar el 3er contrato, se marca automáticamente como
     es_fijo=True y fecha_culminacion=None. Este contrato no vencerá hasta
@@ -245,23 +272,28 @@ def upsert_contrato(empleado, contrato_data):
     resultados = []
 
     for item in contrato_data:
-        n_contrato        = item.get('n_contrato')
-        fecha_ingreso     = item.get('fecha_ingreso')
-        politica_id       = item.get('politica_id')
-        fecha_culminacion = item.get('fecha_culminacion')
+        n_contrato_externo = item.get('n_contrato')   # puede venir del frontend o de la carga masiva
+        fecha_ingreso      = item.get('fecha_ingreso')
+        politica_id        = item.get('politica_id')
+        fecha_culminacion  = item.get('fecha_culminacion')
 
-        if not n_contrato or not fecha_ingreso or not politica_id:
+        if not fecha_ingreso or not politica_id:
             continue
 
-        # ¿Ya existe este contrato en BD?
-        existing = contratos.objects.filter(
-            n_contrato=n_contrato
-        ).select_related('antecedente_id').first()
-
-        # Determinar si será el 3er contrato (solo aplica a creaciones nuevas)
+        # Contar contratos actuales del empleado
         cantidad_actual = contratos.objects.filter(
             antecedente_id__empleado_id=empleado
         ).count()
+
+        # Buscar si ya existe por n_contrato (actualización)
+        existing = None
+        if n_contrato_externo:
+            existing = contratos.objects.filter(
+                n_contrato=n_contrato_externo,
+                antecedente_id__empleado_id=empleado
+            ).select_related('antecedente_id').first()
+
+        # Determinar si será el 3er contrato (solo aplica a creaciones nuevas)
         es_tercer_contrato = (not existing) and (cantidad_actual == 2)
 
         # Gestionar antecedente de servicio
@@ -300,9 +332,16 @@ def upsert_contrato(empleado, contrato_data):
             existing.save()
             contrato = existing
         else:
+            # Si el frontend/Excel envió un n_contrato, usarlo;
+            # si no, auto-generar con la nomenclatura oficial
+            if n_contrato_externo:
+                n_contrato = n_contrato_externo
+            else:
+                n_contrato = _generar_n_contrato(empleado, politica_id, cantidad_actual)
             try:
                 contrato = contratos.objects.create(n_contrato=n_contrato, **defaults)
             except IntegrityError:
+                # Race condition: ya existe con ese n_contrato, actualizar
                 contratos.objects.filter(n_contrato=n_contrato).update(**defaults)
                 contrato = contratos.objects.get(n_contrato=n_contrato)
 

@@ -633,7 +633,8 @@ class ContratoSerializer(serializers.ModelSerializer):
             'fecha_culminacion', 'fecha_egreso', 'politica_id',
             'politica', 'estatus', 'es_fijo',
         ]
-        read_only_fields = ['es_fijo']  # el backend lo controla, no el frontend
+        # es_fijo es siempre controlado por el backend
+        read_only_fields = ['es_fijo']
     
  
 

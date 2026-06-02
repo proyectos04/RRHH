@@ -136,12 +136,24 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
             )
 
         for item in value:
-            inicio = item.get('fecha_ingreso')
-            fin = item.get('fecha_culminacion')
+            inicio          = item.get('fecha_ingreso')
+            fin             = item.get('fecha_culminacion')
             n_contrato_item = item.get('n_contrato')
-            politica_id = item.get('politica_id')
+            politica_id     = item.get('politica_id')
 
-            es_nuevo = not contratos.objects.filter(n_contrato=n_contrato_item).exists() if n_contrato_item else True
+            # Resolver el objeto politica para usar en validaciones y auto-generación
+            if politica_id:
+                politica_obj = politicas.objects.filter(
+                    id=politica_id if isinstance(politica_id, int) else politica_id.pk
+                ).first()
+            else:
+                politica_obj = None
+
+            # Determinar si el contrato ya existe en BD (actualización vs creación)
+            es_nuevo = not contratos.objects.filter(
+                n_contrato=n_contrato_item,
+                antecedente_id__empleado_id=empleado
+            ).exists() if n_contrato_item else True
 
             if es_nuevo:
                 if cantidad_actual >= 3:
@@ -149,14 +161,18 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
                         "El trabajador ya tiene 3 contratos registrados. No se pueden crear más contratos."
                     )
 
-                # Verificar contrato activo solo si no será el 3er (el 3ro convive
-                # con el 2do vencido al momento de su registro)
+                if not politica_obj:
+                    raise serializers.ValidationError(
+                        "La política es obligatoria para registrar un contrato."
+                    )
+
+                # Verificar contrato activo solo para el 1ro y 2do contrato
                 if cantidad_actual < 2:
                     hoy = date_type.today()
                     contrato_activo = contratos_existentes.filter(
                         fecha_culminacion__isnull=True
                     ).first() or contratos_existentes.filter(
-                        fecha_culminacion__gte=hoy
+                        fecha_culminacion__gt=hoy
                     ).first()
                     if contrato_activo:
                         raise serializers.ValidationError(
@@ -164,12 +180,9 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
                             "No se puede crear otro hasta que finalice."
                         )
 
-                if not n_contrato_item and politica_id:
-                    cedula = str(empleado.cedulaidentidad)
-                    politica = politicas.objects.filter(id=politica_id).first()
-                    inicial = politica.tipo_politica[0].upper() if politica else 'C'
-                    nuevo_numero = cantidad_actual + 1
-                    n_contrato_item = f"{inicial}-{cedula}-{str(nuevo_numero).zfill(2)}"
+                # Si el frontend no envió n_contrato, auto-generar con la nomenclatura
+                if not n_contrato_item:
+                    n_contrato_item = f"{politica_obj.tipo_politica[0].upper()}-{empleado.cedulaidentidad}-{str(cantidad_actual + 1).zfill(2)}"
                     item['n_contrato'] = n_contrato_item
 
             # El 3er contrato no necesita validación de fechas (siempre fijo)
@@ -191,7 +204,8 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
                 other_fin = other.fecha_culminacion or date_type.today()
                 if other_inicio and inicio <= other_fin and fin >= other_inicio:
                     raise serializers.ValidationError(
-                        f"El contrato {n_contrato_item} ({inicio} - {fin}) se solapa con el contrato {other.n_contrato} ({other_inicio} - {other_fin})."
+                        f"El contrato {n_contrato_item} ({inicio} - {fin}) se solapa con el contrato "
+                        f"{other.n_contrato} ({other_inicio} - {other_fin})."
                     )
         return value
 
