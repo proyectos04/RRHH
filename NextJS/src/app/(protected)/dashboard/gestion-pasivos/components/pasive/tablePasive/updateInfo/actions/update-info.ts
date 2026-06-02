@@ -11,7 +11,7 @@ import { PhysicalProfileUpdateType } from "@/shared/schemas/employees/update/sch
 import { BasicInfoUpdateType } from "@/shared/schemas/employees/update/schemaEmployeeUpdate";
 import { SupplementaryTrainingUpdateType } from "@/shared/schemas/employees/update/schema-supplementary_training";
 import { ContratoUpdateType } from "@/shared/schemas/employees/update/schema-contrato";
-import { createCarrera, createInstitucion, createOrganismoAdscrito } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
+import { createCarrera, createInstitucion, createMencion, createOrganismoAdscrito } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 
 export default async function updateInfoEmployee(
   data:
@@ -60,6 +60,15 @@ export default async function updateInfoEmployee(
               processed = { ...processed, institucion_id: result.data.id, nueva_institucion_nombre: undefined };
             } else {
               processed = { ...processed, institucion_id: undefined, nueva_institucion_nombre: undefined };
+            }
+          }
+
+          if (item.mencion_id === -1 && typeof item.nueva_mencion_nombre === "string" && item.nueva_mencion_nombre.trim() && typeof processed.carrera_id === "number" && processed.carrera_id > 0) {
+            const result = await createMencion(item.nueva_mencion_nombre.trim(), processed.carrera_id as number);
+            if (result.status === "success" && result.data?.[0]?.id) {
+              processed = { ...processed, mencion_id: result.data[0].id, nueva_mencion_nombre: undefined };
+            } else {
+              processed = { ...processed, mencion_id: undefined, nueva_mencion_nombre: undefined };
             }
           }
 
