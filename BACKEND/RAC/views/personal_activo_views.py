@@ -24,7 +24,12 @@ from ..models.historial_personal_models import PrestamoCargo, categoria_movimien
 from ..serializers.historial_personal_serializers import (
     PrestamoCargoSerializer, PrestamoCargoCreateSerializer, PrestamoCargoUpdateSerializer, TipoMovimientoSerializer
 )
-from ..services.prestamo_cargo_services import verificar_estatus_prestamo, validar_encargaduria_unica, validar_encargado_unico
+from ..services.prestamo_cargo_services import (
+    verificar_estatus_prestamo,
+    validar_encargaduria_unica,
+    validar_encargado_unico,
+    sincronizar_estatus_cargos,
+)
 
 from USER.models.user_models import cuenta as User  
 
@@ -3083,6 +3088,7 @@ def update_prestamo_cargo(request, id):
             if 'fecha_fin' in request.data:
                 prestamo.estatus, _ = Estatus.objects.get_or_create(estatus__iexact="FINALIZADA", defaults={"estatus": "FINALIZADA"})
                 prestamo.save()
+                sincronizar_estatus_cargos(prestamo)
             else:
                 verificar_estatus_prestamo(prestamo)
             return Response({
