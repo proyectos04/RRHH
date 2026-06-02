@@ -23,9 +23,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.coordination = user.coordination;
         token.dependency = user.dependency;
 
-        token.djAccess = (user as any).djAccess;
-        token.djRefresh = (user as any).djRefresh;
-        token.debeCambiarPassword = (user as any).debeCambiarPassword || false;
+        token.djAccess = user.djAccess;
+        token.djRefresh = user.djRefresh;
+        token.debeCambiarPassword = user.debeCambiarPassword || false;
       }
       return token;
     },

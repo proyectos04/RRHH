@@ -286,7 +286,7 @@ const formatDate = (d: string | Date) => {
   const generateNContrato = (cedula: string, politicaId: number) => {
     const selectedPolitica = politicas?.data?.find((p: Politica) => p.id === politicaId);
     const initials = selectedPolitica?.tipo_politica?.charAt(0)?.toUpperCase() || "C";
-    const existingCount = employee && !Array.isArray(employee.data) ? (employee.data as any).contrato?.length || 0 : 0;
+    const existingCount = employee?.data?.contrato?.length || 0;
     return `${initials}-${cedula}-${String(existingCount + 1).padStart(2, "0")}`;
   };
 

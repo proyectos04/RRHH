@@ -31,6 +31,7 @@ export interface SessionType {
     id: string;
     nombre: string;
   };
+  debe_cambiar_password?: boolean;
 }
 export default {
   providers: [
@@ -73,7 +74,7 @@ export default {
             direccionLine: userData.data.direccion_linea,
             coordination: userData.data.coordinacion,
             dependency: userData.data.dependencia,
-            debeCambiarPassword: (userData.data as any).debe_cambiar_password || false,
+            debeCambiarPassword: userData.data.debe_cambiar_password || false,
             djAccess: userData.tokens.access,
             djRefresh: userData.tokens.refresh,
           };

@@ -185,7 +185,7 @@ export function AsigCode() {
   const generateNContrato = (cedula: string, politicaId: number) => {
     const selectedPolitica = politicas?.data?.find(p => p.id === politicaId);
     const initials = selectedPolitica?.tipo_politica?.charAt(0)?.toUpperCase() || 'C';
-    const existingCount = (employee ? (employee as any).contrato?.length || 0 : 0);
+    const existingCount = employee?.contrato?.length || 0;
     const count = existingCount + 1;
     return `${initials}-${cedula}-${String(count).padStart(2, '0')}`;
   };
@@ -225,7 +225,7 @@ export function AsigCode() {
                         setContratoData(prev => ({
                           ...prev,
                           politica_id: politicaId,
-                          n_contrato: prev.n_contrato || generateNContrato((employee as any).cedulaidentidad, politicaId)
+                          n_contrato: prev.n_contrato || generateNContrato(employee.cedulaidentidad, politicaId)
                         }));
                       }}
                       value={contratoData.politica_id ? contratoData.politica_id.toString() : ""}
@@ -272,7 +272,7 @@ export function AsigCode() {
                     if (!contratoData.politica_id) { toast.error("Seleccione una política"); return; }
                     if (!contratoData.fecha_ingreso) { toast.error("Seleccione fecha de ingreso"); return; }
                     setSavingContrato(true);
-                    const n_contrato = contratoData.n_contrato || generateNContrato((employee as any).cedulaidentidad, contratoData.politica_id);
+                    const n_contrato = contratoData.n_contrato || generateNContrato(employee.cedulaidentidad, contratoData.politica_id);
                     const session = await fetch('/api/auth/session').then(r => r.json());
                     const userId = session?.user?.id;
                     const payload = {
@@ -284,7 +284,7 @@ export function AsigCode() {
                         fecha_culminacion: contratoData.fecha_culminacion ? contratoData.fecha_culminacion.toISOString().split('T')[0] : null,
                       }]
                     };
-                    const data = await apiFetch<{ status: string; message?: string }>(`Employee/${(employee as any).id}/`, {
+                    const data = await apiFetch<{ status: string; message?: string }>(`Employee/${employee.id}/`, {
                       method: 'PATCH', body: JSON.stringify(payload)
                     });
                     setSavingContrato(false);

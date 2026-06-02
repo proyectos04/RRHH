@@ -61,6 +61,8 @@ declare module "next-auth" {
       nombre: string;
     };
     debeCambiarPassword?: boolean;
+    djAccess: string;
+    djRefresh: string;
   }
 }
 
@@ -92,5 +94,6 @@ declare module "next-auth/jwt" {
       id: string;
       nombre: string;
     };
+    debeCambiarPassword?: boolean;
   }
 }

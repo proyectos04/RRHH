@@ -51,6 +51,7 @@ import { Contrato, EmployeeData } from "@/app/types/types";
 import Loading from "@/app/(protected)/dashboard/gestion-trabajadores/components/loading/loading";
 import { useSearchStore } from "@/hooks/use-search-params";
 import { schemaContratoItem } from "@/shared/schemas/employees/register/schema-contrato";
+import type { UpdateEmployeeFn } from "@/shared/types/actions";
 
 const schemaUpdateContrato = z.object({
   contrato: z.array(schemaContratoItem).optional(),
@@ -60,7 +61,7 @@ type Props = {
   employee: EmployeeData;
   mutate: (key: string[]) => void;
   mutateKey?: string;
-    updateInfoEmployee: (...args: any[]) => Promise<{ success: boolean; message: string }>;
+    updateInfoEmployee: UpdateEmployeeFn;
 };
 
 export default function FormUpdateContrato({ employee, mutate, mutateKey = "api/empleados", updateInfoEmployee }: Props) {

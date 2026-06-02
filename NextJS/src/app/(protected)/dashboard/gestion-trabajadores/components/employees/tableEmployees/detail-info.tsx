@@ -197,10 +197,10 @@ export default function DetailInfoEmployee({ employee }: Props) {
                         <div>
                           <Badge
                             variant={
-                              (v as any).encargaduria ? "default" : "destructive"
+                              employee.encargadurias?.some(e => e.cargo_encargado === v.id && e.estatus_nombre !== "FINALIZADA") ? "default" : "destructive"
                             }
                           >
-                            {(v as any).encargaduria ? "SÍ" : "NO"}
+                            {employee.encargadurias?.some(e => e.cargo_encargado === v.id && e.estatus_nombre !== "FINALIZADA") ? "SÍ" : "NO"}
                           </Badge>
                         </div>
                         <Separator

@@ -1,6 +1,6 @@
 import { apiFetchGet } from "@/lib/utils";
 import { apiFetchBlob, apiFetch } from "@/lib/api-client";
-import type { ApiResponse, Pregunta } from "@/app/types/types";
+import type { ApiResponse, Pregunta, InfoCode, DewllingInfo } from "@/app/types/types";
 
 export const getPreguntas = async (): Promise<ApiResponse<Pregunta[]>> => {
   return apiFetchGet<Pregunta[]>("autogestion/preguntas/");
@@ -13,8 +13,8 @@ export interface CensoEmpleadoItem {
   apellidos: string;
   fecha_nacimiento: string;
   carnet_patria: string | null;
-  cargos: any[];
-  datos_vivienda: any;
+  cargos: InfoCode[];
+  datos_vivienda: DewllingInfo | null;
   total_apn: { years: number; months: number; days: number };
   fecha_ingreso_organismo: string | null;
   preguntas: {
@@ -35,6 +35,15 @@ export const consultarCensoEmpleado = async (cedula?: string) => {
 
 export const exportarCensoExcel = async () => {
   return apiFetchBlob("autogestion/censo-vivienda/exportar-excel/");
+};
+
+export const exportarCensoExcelConFiltros = async (
+  payload: SchemaCensoExcelType,
+): Promise<globalThis.Blob> => {
+  return apiFetchBlob("autogestion/censo-vivienda/exportar-excel/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 };
 
 interface RespuestaItem {

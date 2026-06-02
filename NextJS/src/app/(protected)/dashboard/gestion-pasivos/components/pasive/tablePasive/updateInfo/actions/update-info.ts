@@ -9,6 +9,8 @@ import { DwellingUpdateType } from "@/shared/schemas/employees/update/schema-dwe
 import { HealthUpdateType } from "@/shared/schemas/employees/update/schema-health_profile";
 import { PhysicalProfileUpdateType } from "@/shared/schemas/employees/update/schema-physical_profile";
 import { BasicInfoUpdateType } from "@/shared/schemas/employees/update/schemaEmployeeUpdate";
+import { SupplementaryTrainingUpdateType } from "@/shared/schemas/employees/update/schema-supplementary_training";
+import { ContratoUpdateType } from "@/shared/schemas/employees/update/schema-contrato";
 import { createCarrera, createInstitucion, createOrganismoAdscrito } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
 
 export default async function updateInfoEmployee(
@@ -18,7 +20,9 @@ export default async function updateInfoEmployee(
     | HealthUpdateType
     | DwellingUpdateType
     | AcademyUpdateUpdateType
-    | BasicInfoUpdateType,
+    | BasicInfoUpdateType
+    | SupplementaryTrainingUpdateType
+    | ContratoUpdateType,
   idEmployee: string,
   cedulaidentidad?: string,
 ) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { FieldValues, useForm } from "react-hook-form";
+import { type FieldPath, type FieldValues, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import useSWR from "swr";
@@ -47,7 +47,7 @@ import CheckboxForm from "@/components/form-checkbox";
 import { Badge, ClipboardCheck, FileText, IdCard } from "lucide-react";
 
 interface DynamicFormValues extends FieldValues {
-  [key: string]: string | boolean | { [key: string]: string | number };
+  [key: string]: string | boolean | number | { [key: string]: string | number };
 }
 
 const isDev = process.env.NODE_ENV === "development";
@@ -248,7 +248,7 @@ export default function AutogestionPage() {
                       {pregunta.tipo.nombre === "abierta" ? (
                         <InputForm
                           form={form}
-                          nameInput={String(pregunta.id) as any}
+                          nameInput={String(pregunta.id) as FieldPath<DynamicFormValues>}
                           label={`${pregunta.enunciado} *`}
                           type="text"
                           placeholder="Escriba su respuesta"
@@ -257,13 +257,13 @@ export default function AutogestionPage() {
                         pregunta.opciones.length === 1 ? (
                         <CheckboxForm
                           form={form}
-                          nameInput={String(pregunta.id) as any}
+                          nameInput={String(pregunta.id) as FieldPath<DynamicFormValues>}
                           label={`${pregunta.enunciado} *`}
                         />
                       ) : (
                         <RadioGroupForm
                           form={form}
-                          nameInput={String(pregunta.id) as any}
+                          nameInput={String(pregunta.id) as FieldPath<DynamicFormValues>}
                           label={`${pregunta.enunciado} *`}
                           options={pregunta.opciones.map((op: Opcion) => ({
                             value: String(op.id),
@@ -281,7 +281,7 @@ export default function AutogestionPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.estado_id" as any}
+                      name={"datos_vivienda.estado_id" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Estado *</FormLabel>
@@ -289,8 +289,8 @@ export default function AutogestionPage() {
                             onValueChange={(value) => {
                               field.onChange(Number(value));
                               setEstadoId(value);
-                              form.setValue("datos_vivienda.municipio_id" as any, 0);
-                              form.setValue("datos_vivienda.parroquia" as any, 0);
+                              form.setValue("datos_vivienda.municipio_id" as FieldPath<DynamicFormValues>, 0);
+                              form.setValue("datos_vivienda.parroquia" as FieldPath<DynamicFormValues>, 0);
                             }}
                           >
                             <FormControl>
@@ -318,7 +318,7 @@ export default function AutogestionPage() {
                     />
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.municipio_id" as any}
+                      name={"datos_vivienda.municipio_id" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Municipio *</FormLabel>
@@ -326,7 +326,7 @@ export default function AutogestionPage() {
                             onValueChange={(value) => {
                               field.onChange(Number(value));
                               setMunicipioId(value);
-                              form.setValue("datos_vivienda.parroquia" as any, 0);
+                              form.setValue("datos_vivienda.parroquia" as FieldPath<DynamicFormValues>, 0);
                             }}
                           >
                             <FormControl>
@@ -354,7 +354,7 @@ export default function AutogestionPage() {
                     />
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.parroquia" as any}
+                      name={"datos_vivienda.parroquia" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Parroquia *</FormLabel>
@@ -388,7 +388,7 @@ export default function AutogestionPage() {
                     />
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.condicion_vivienda_id" as any}
+                      name={"datos_vivienda.condicion_vivienda_id" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Condición de Vivienda *</FormLabel>
@@ -422,7 +422,7 @@ export default function AutogestionPage() {
                     />
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.direccion_exacta" as any}
+                      name={"datos_vivienda.direccion_exacta" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem className="col-span-2">
                           <FormLabel>Dirección Exacta *</FormLabel>
@@ -439,7 +439,7 @@ export default function AutogestionPage() {
                     />
                     <FormField
                       control={form.control}
-                      name={"datos_vivienda.codigo_postal" as any}
+                      name={"datos_vivienda.codigo_postal" as FieldPath<DynamicFormValues>}
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Código Postal</FormLabel>

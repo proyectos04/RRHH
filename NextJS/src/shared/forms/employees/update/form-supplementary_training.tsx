@@ -62,13 +62,14 @@ import {
   getTiposProcedencia,
   getInstituciones,
 } from "@/app/(protected)/dashboard/gestion-trabajadores/api/getInfoRac";
+import type { UpdateEmployeeFn } from "@/shared/types/actions";
 
 type Props = {
   defaultValues: SupplementaryTrainingUpdateType;
   idEmployee: string;
   mutate: (key: string[]) => void;
   mutateKey?: string;
-    updateInfoEmployee: (...args: any[]) => Promise<{ success: boolean; message: string }>;
+    updateInfoEmployee: UpdateEmployeeFn;
 };
 export default function FormUpdateSupplementaryTraining({
   defaultValues,
@@ -168,7 +169,7 @@ export default function FormUpdateSupplementaryTraining({
                             horas_completadas: undefined,
                           },
                         ],
-                      } as any);
+                      } satisfies Partial<SupplementaryTrainingUpdateType>);
                     }}
                   >
                     <Trash />
