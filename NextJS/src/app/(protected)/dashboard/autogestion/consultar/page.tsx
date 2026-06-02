@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import useSWR from "swr";
 import { z } from "zod";
-import { Download, Search, Eraser, Eye } from "lucide-react";
+import { Download, Search, Eraser, Eye, Filter } from "lucide-react";
 import { toast } from "sonner";
 
 import PageLayout from "@/components/layout/page-layout";
@@ -20,6 +20,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -39,7 +46,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
-import { consultarCensoEmpleado, exportarCensoExcel, type CensoEmpleadoItem } from "../api/getInfoAutogestion";
+import { consultarCensoEmpleado, exportarCensoExcel, exportarCensoExcelConFiltros, type CensoEmpleadoItem } from "../api/getInfoAutogestion";
+import {
+  schemaCensoExcel,
+} from "../schema/schema-autogestion-excel";
+import {
+  getDependency,
+  getDirectionGeneralById,
+  getDirectionLine,
+  getCoordination,
+  getNominaGeneral,
+} from "../../gestion-trabajadores/api/getInfoRac";
 import Loading from "../../gestion-trabajadores/components/loading/loading";
 
 const schemaSearch = z.object({
@@ -107,15 +124,57 @@ export default function ConsultarCensoPage() {
   const [searchCedula, setSearchCedula] = useState<string>("");
   const [isPending, startTransition] = useTransition();
 
-  const form = useForm({
+  const [dependencyId, setDependencyId] = useState<number>(0);
+  const [directionGeneralId, setDirectionGeneralId] = useState<string | null>(null);
+  const [directionLineId, setDirectionLineId] = useState<string | null>(null);
+
+  const formSearch = useForm({
     resolver: zodResolver(schemaSearch),
     defaultValues: { cedula: "" },
+  });
+
+  const formExcel = useForm({
+    resolver: zodResolver(schemaCensoExcel),
+    defaultValues: {
+      filtros: {
+        dependencia_id: undefined,
+        direccion_general_id: undefined,
+        direccion_linea_id: undefined,
+        coordinacion_id: undefined,
+        nomina_id: undefined,
+      },
+    },
   });
 
   const { data, isLoading, mutate } = useSWR(
     "censo-consultar",
     () => consultarCensoEmpleado(searchCedula || undefined),
     { revalidateOnFocus: false },
+  );
+
+  const { data: dependency, isLoading: isLoadingDependency } = useSWR(
+    "dependency",
+    async () => await getDependency(),
+  );
+
+  const { data: directionGeneral, isLoading: isLoadingDirectionGeneral } = useSWR(
+    dependencyId ? ["directionGeneral", dependencyId] : null,
+    async () => await getDirectionGeneralById(dependencyId),
+  );
+
+  const { data: directionLine, isLoading: isLoadingDirectionLine } = useSWR(
+    directionGeneralId ? ["directionLine", directionGeneralId] : null,
+    async () => await getDirectionLine(directionGeneralId!),
+  );
+
+  const { data: coordination, isLoading: isLoadingCoordination } = useSWR(
+    directionLineId ? ["coordination", directionLineId] : null,
+    async () => await getCoordination(directionLineId!),
+  );
+
+  const { data: nomina, isLoading: isLoadingNomina } = useSWR(
+    "nominaGeneral",
+    async () => await getNominaGeneral(),
   );
 
   const empleados: CensoEmpleadoItem[] = data?.data ?? [];
@@ -125,7 +184,7 @@ export default function ConsultarCensoPage() {
     mutate();
   };
 
-  const onExportExcel = () => {
+  const onExportExcelGeneral = () => {
     startTransition(async () => {
       try {
         const blob = await exportarCensoExcel();
@@ -135,11 +194,44 @@ export default function ConsultarCensoPage() {
         a.download = `censo_vivienda_${new Date().toISOString().split("T")[0]}.xlsx`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success("Excel descargado correctamente");
+        toast.success("Excel general descargado correctamente");
       } catch {
         toast.error("Error al descargar el Excel");
       }
     });
+  };
+
+  const onExportExcelConFiltros = () => {
+    startTransition(async () => {
+      try {
+        const filters = formExcel.getValues();
+        const blob = await exportarCensoExcelConFiltros(filters);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `censo_vivienda_filtrado_${new Date().toISOString().split("T")[0]}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success("Excel filtrado descargado correctamente");
+      } catch {
+        toast.error("Error al descargar el Excel");
+      }
+    });
+  };
+
+  const onCleanFilters = () => {
+    formExcel.reset({
+      filtros: {
+        dependencia_id: undefined,
+        direccion_general_id: undefined,
+        direccion_linea_id: undefined,
+        coordinacion_id: undefined,
+        nomina_id: undefined,
+      },
+    });
+    setDependencyId(0);
+    setDirectionGeneralId(null);
+    setDirectionLineId(null);
   };
 
   return (
@@ -147,109 +239,338 @@ export default function ConsultarCensoPage() {
       title="Respuestas del Censo"
       description="Consulta las respuestas del censo de vivienda por trabajador"
     >
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSearch)}
-          className="flex flex-row items-end gap-2"
-        >
-          <FormField
-            name="cedula"
-            control={form.control}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Buscar por Cedula</FormLabel>
-                <FormControl>
-                  <Input placeholder="buscar cedula..." {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="cursor-pointer" disabled={isPending}>
-            Buscar <Search />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="cursor-pointer"
-            onClick={() => {
-              form.reset({ cedula: "" });
-              setSearchCedula("");
-              mutate();
-            }}
+      <div className="flex flex-col gap-4">
+        <Form {...formSearch}>
+          <form
+            onSubmit={formSearch.handleSubmit(onSearch)}
+            className="flex flex-row items-end gap-2"
           >
-            Limpiar <Eraser />
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="cursor-pointer ml-auto"
-            onClick={onExportExcel}
-            disabled={isPending}
-          >
-            {isPending ? "Generando..." : "Exportar Excel"} <Download />
-          </Button>
-        </form>
-      </Form>
+            <FormField
+              name="cedula"
+              control={formSearch.control}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Buscar por Cedula</FormLabel>
+                  <FormControl>
+                    <Input placeholder="buscar cedula..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="cursor-pointer" disabled={isPending}>
+              Buscar <Search />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => {
+                formSearch.reset({ cedula: "" });
+                setSearchCedula("");
+                mutate();
+              }}
+            >
+              Limpiar <Eraser />
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer ml-auto"
+              onClick={onExportExcelGeneral}
+              disabled={isPending}
+            >
+              {isPending ? "Generando..." : "Exportar Excel General"} <Download />
+            </Button>
+          </form>
+        </Form>
 
-      {isLoading ? (
-        <Loading promiseMessage="Cargando respuestas..." />
-      ) : (
-        <ScrollArea className="h-[70vh] rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Cedula</TableHead>
-                <TableHead>Nombres</TableHead>
-                <TableHead>Apellidos</TableHead>
-                <TableHead>Carnet Patria</TableHead>
-                <TableHead className="w-[80px]">APN</TableHead>
-                <TableHead className="w-[80px]">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {empleados.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Filter className="size-4" /> Filtros para Exportar Excel
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Form {...formExcel}>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                <FormField
+                  control={formExcel.control}
+                  name="filtros.dependencia_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nivel</FormLabel>
+                      <Select
+                        onValueChange={(values) => {
+                          const id = Number.parseInt(values);
+                          field.onChange(id);
+                          setDependencyId(id);
+                          formExcel.setValue("filtros.direccion_general_id", undefined);
+                          formExcel.setValue("filtros.direccion_linea_id", undefined);
+                          formExcel.setValue("filtros.coordinacion_id", undefined);
+                          setDirectionGeneralId(null);
+                          setDirectionLineId(null);
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full truncate">
+                            <SelectValue
+                              placeholder={
+                                isLoadingDependency
+                                  ? "Cargando..."
+                                  : "Seleccione un Nivel"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {dependency?.data.map((dep) => (
+                            <SelectItem key={dep.id} value={`${dep.id}`}>
+                              {dep.Codigo}-{dep.dependencia}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={formExcel.control}
+                  name="filtros.direccion_general_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dirección / Gerencia / Oficina</FormLabel>
+                      <Select
+                        onValueChange={(values) => {
+                          const id = Number.parseInt(values);
+                          field.onChange(id);
+                          setDirectionGeneralId(values);
+                          formExcel.setValue("filtros.direccion_linea_id", undefined);
+                          formExcel.setValue("filtros.coordinacion_id", undefined);
+                          setDirectionLineId(null);
+                        }}
+                        disabled={!dependencyId}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full truncate">
+                            <SelectValue
+                              placeholder={
+                                isLoadingDirectionGeneral
+                                  ? "Cargando..."
+                                  : "Seleccione Dir. / Gcia. / Oficina"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {directionGeneral?.data.map((dg) => (
+                            <SelectItem key={dg.id} value={`${dg.id}`}>
+                              {dg.Codigo}-{dg.direccion_general}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={formExcel.control}
+                  name="filtros.direccion_linea_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>División</FormLabel>
+                      <Select
+                        onValueChange={(values) => {
+                          const id = Number.parseInt(values);
+                          field.onChange(id);
+                          setDirectionLineId(values);
+                          formExcel.setValue("filtros.coordinacion_id", undefined);
+                        }}
+                        disabled={!directionGeneralId}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full truncate">
+                            <SelectValue
+                              placeholder={
+                                isLoadingDirectionLine
+                                  ? "Cargando..."
+                                  : "Seleccione una División"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {directionLine?.data.map((dl) => (
+                            <SelectItem key={dl.id} value={`${dl.id}`}>
+                              {dl.Codigo}-{dl.direccion_linea}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={formExcel.control}
+                  name="filtros.coordinacion_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Coordinación</FormLabel>
+                      <Select
+                        onValueChange={(values) => {
+                          field.onChange(Number.parseInt(values));
+                        }}
+                        disabled={!directionLineId}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full truncate">
+                            <SelectValue
+                              placeholder={
+                                isLoadingCoordination
+                                  ? "Cargando..."
+                                  : "Seleccione Coordinación"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {coordination?.data.map((coord) => (
+                            <SelectItem key={coord.id} value={`${coord.id}`}>
+                              {coord.Codigo}-{coord.coordinacion}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={formExcel.control}
+                  name="filtros.nomina_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tipo de Nómina</FormLabel>
+                      <Select
+                        onValueChange={(values) => {
+                          field.onChange(Number.parseInt(values));
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="w-full truncate">
+                            <SelectValue
+                              placeholder={
+                                isLoadingNomina
+                                  ? "Cargando..."
+                                  : "Seleccione Tipo de Nómina"
+                              }
+                            />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {nomina?.data.map((n) => (
+                            <SelectItem key={n.id} value={`${n.id}`}>
+                              {n.nomina}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={onCleanFilters}
+                >
+                  <Eraser className="size-4 mr-1" /> Limpiar Filtros
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={onExportExcelConFiltros}
+                  disabled={isPending}
+                >
+                  {isPending ? "Generando..." : "Generar Excel con Filtros"} <Download className="size-4 ml-1" />
+                </Button>
+              </div>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {isLoading ? (
+          <Loading promiseMessage="Cargando respuestas..." />
+        ) : (
+          <ScrollArea className="h-[60vh] rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No se encontraron respuestas
-                  </TableCell>
+                  <TableHead className="w-[100px]">Cedula</TableHead>
+                  <TableHead>Nombres</TableHead>
+                  <TableHead>Apellidos</TableHead>
+                  <TableHead>Carnet Patria</TableHead>
+                  <TableHead className="w-[80px]">APN</TableHead>
+                  <TableHead className="w-[80px]">Acciones</TableHead>
                 </TableRow>
-              ) : (
-                empleados.map((emp) => (
-                  <TableRow key={emp.id}>
-                    <TableCell className="font-medium">{emp.cedula}</TableCell>
-                    <TableCell>{emp.nombres}</TableCell>
-                    <TableCell>{emp.apellidos}</TableCell>
-                    <TableCell>{emp.carnet_patria || "N/A"}</TableCell>
-                    <TableCell>
-                      {emp.total_apn ? `${emp.total_apn.years}a ${emp.total_apn.months}m` : "N/A"}
-                    </TableCell>
-                    <TableCell>
-                      <SheetUI>
-                        <SheetTriggerUI asChild>
-                          <Button variant="outline" size="sm" className="cursor-pointer">
-                            <Eye className="size-4 mr-1" /> Ver
-                          </Button>
-                        </SheetTriggerUI>
-                        <SheetContentUI>
-                          <SheetHeaderUI>
-                            <SheetTitleUI>
-                              Detalle del Censo: {emp.nombres} {emp.apellidos}
-                            </SheetTitleUI>
-                          </SheetHeaderUI>
-                          <ScrollArea className="h-[80vh] px-4 pb-4">
-                            <DetalleCenso empleado={emp} />
-                          </ScrollArea>
-                        </SheetContentUI>
-                      </SheetUI>
+              </TableHeader>
+              <TableBody>
+                {empleados.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No se encontraron respuestas
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </ScrollArea>
-      )}
+                ) : (
+                  empleados.map((emp) => (
+                    <TableRow key={emp.id}>
+                      <TableCell className="font-medium">{emp.cedula}</TableCell>
+                      <TableCell>{emp.nombres}</TableCell>
+                      <TableCell>{emp.apellidos}</TableCell>
+                      <TableCell>{emp.carnet_patria || "N/A"}</TableCell>
+                      <TableCell>
+                        {emp.total_apn ? `${emp.total_apn.years}a ${emp.total_apn.months}m` : "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <SheetUI>
+                          <SheetTriggerUI asChild>
+                            <Button variant="outline" size="sm" className="cursor-pointer">
+                              <Eye className="size-4 mr-1" /> Ver
+                            </Button>
+                          </SheetTriggerUI>
+                          <SheetContentUI>
+                            <SheetHeaderUI>
+                              <SheetTitleUI>
+                                Detalle del Censo: {emp.nombres} {emp.apellidos}
+                              </SheetTitleUI>
+                            </SheetHeaderUI>
+                            <ScrollArea className="h-[80vh] px-4 pb-4">
+                              <DetalleCenso empleado={emp} />
+                            </ScrollArea>
+                          </SheetContentUI>
+                        </SheetUI>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        )}
+      </div>
     </PageLayout>
   );
 }
