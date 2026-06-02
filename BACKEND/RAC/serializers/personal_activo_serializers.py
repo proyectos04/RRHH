@@ -21,6 +21,7 @@ from ..services.profile_services import (
     replace_contacto_emergencia, replace_antecedentes,
     upsert_contrato,
 )
+from ..serializers.mixins import ContratoMixin
 from ..services.dependency_validators import validate_dependency_hierarchy
 
 
@@ -119,13 +120,20 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
     def validate_contrato(self, value):
         if not value or not self.instance:
             return value
-        
+
         empleado = self.instance
 
         contratos_existentes = contratos.objects.filter(
             antecedente_id__empleado_id=empleado
         )
         cantidad_actual = contratos_existentes.count()
+
+        # Regla FIJO: si ya tiene contrato fijo, bloquear cualquier cambio de contrato
+        if contratos_existentes.filter(es_fijo=True).exists():
+            raise serializers.ValidationError(
+                "El empleado tiene contrato FIJO (3er contrato). "
+                "No se pueden registrar ni modificar contratos hasta un egreso formal."
+            )
 
         for item in value:
             inicio = item.get('fecha_ingreso')
@@ -141,16 +149,20 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
                         "El trabajador ya tiene 3 contratos registrados. No se pueden crear más contratos."
                     )
 
-                hoy = date_type.today()
-                contrato_activo = contratos_existentes.filter(
-                    fecha_culminacion__isnull=True
-                ).first() or contratos_existentes.filter(
-                    fecha_culminacion__gte=hoy
-                ).first()
-                if contrato_activo:
-                    raise serializers.ValidationError(
-                        f"El trabajador ya tiene un contrato activo ({contrato_activo.n_contrato}). No se puede crear otro hasta que finalice."
-                    )
+                # Verificar contrato activo solo si no será el 3er (el 3ro convive
+                # con el 2do vencido al momento de su registro)
+                if cantidad_actual < 2:
+                    hoy = date_type.today()
+                    contrato_activo = contratos_existentes.filter(
+                        fecha_culminacion__isnull=True
+                    ).first() or contratos_existentes.filter(
+                        fecha_culminacion__gte=hoy
+                    ).first()
+                    if contrato_activo:
+                        raise serializers.ValidationError(
+                            f"El trabajador ya tiene un contrato activo ({contrato_activo.n_contrato}). "
+                            "No se puede crear otro hasta que finalice."
+                        )
 
                 if not n_contrato_item and politica_id:
                     cedula = str(empleado.cedulaidentidad)
@@ -159,6 +171,10 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
                     nuevo_numero = cantidad_actual + 1
                     n_contrato_item = f"{inicial}-{cedula}-{str(nuevo_numero).zfill(2)}"
                     item['n_contrato'] = n_contrato_item
+
+            # El 3er contrato no necesita validación de fechas (siempre fijo)
+            if cantidad_actual == 2 and es_nuevo:
+                continue
 
             if not inicio:
                 continue
@@ -207,7 +223,7 @@ class EmployeeCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerialize
 # -------------------------------------------------------------
 # serializers para listar datos personales 
 # -------------------------------------------------------------  
-class EmployeeListSerializer(serializers.ModelSerializer):
+class EmployeeListSerializer(ContratoMixin, serializers.ModelSerializer):
     sexo = SexoSerializer(source='sexoid', read_only=True)
     estadoCivil = EstadoCivilSerializer(read_only=True)
 
@@ -269,11 +285,8 @@ class EmployeeListSerializer(serializers.ModelSerializer):
         cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
         return AntecedentesServicioSerializer(cerrados, many=True).data
 
-    def get_contrato(self, obj):
-        contratos_qs = contratos.objects.filter(
-            antecedente_id__empleado_id=obj
-        ).select_related('antecedente_id', 'politica_id', 'estatus_id')
-        return ContratoSerializer(contratos_qs, many=True).data
+    # get_contrato viene del ContratoMixin
+
     
 
 # -------------------------------------------------------------
@@ -531,7 +544,7 @@ class SpecialPositionAutoCreateSerializer(CleanZerosMixin, serializers.ModelSeri
 # -------------------------------------------------------------
 # serializers para listar datos de cargo y personales
 # ------------------------------------------------------------- 
-class EmployeeDetailSerializer(serializers.ModelSerializer):
+class EmployeeDetailSerializer(ContratoMixin, serializers.ModelSerializer):
 
     sexo = SexoSerializer(source='sexoid', read_only=True)
     estadoCivil = EstadoCivilSerializer(read_only=True)
@@ -603,11 +616,8 @@ class EmployeeDetailSerializer(serializers.ModelSerializer):
         cerrados = obj.antecedentes_servicio_set.filter(fecha_egreso__isnull=False)
         return AntecedentesServicioSerializer(cerrados, many=True).data
 
-    def get_contrato(self, obj):
-        contratos_qs = contratos.objects.filter(
-            antecedente_id__empleado_id=obj
-        ).select_related('antecedente_id', 'politica_id', 'estatus_id')
-        return ContratoSerializer(contratos_qs, many=True).data
+    # get_contrato viene del ContratoMixin
+
 
     def get_encargadurias(self, obj):
         from datetime import date

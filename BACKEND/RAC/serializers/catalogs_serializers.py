@@ -631,8 +631,9 @@ class ContratoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'n_contrato', 'fecha_ingreso',
             'fecha_culminacion', 'fecha_egreso', 'politica_id',
-            'politica', 'estatus',
+            'politica', 'estatus', 'es_fijo',
         ]
+        read_only_fields = ['es_fijo']  # el backend lo controla, no el frontend
     
  
 

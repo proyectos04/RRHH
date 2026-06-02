@@ -486,12 +486,48 @@ class ImportFullEmployeeDataView(APIView):
                             # --- 8. CONTRATO (CONATEL) ---
                             if n_contrato_excel and fecha_ingreso_org:
                                 politica_obj = cache['politicas'].get(politica_excel)
-                                upsert_contrato(emp_instance, {
-                                    'n_contrato': n_contrato_excel,
-                                    'fecha_ingreso': fecha_ingreso_org,
-                                    'politica_id': politica_obj,
-                                    'fecha_culminacion': fecha_culminacion_excel,
-                                })
+
+                                # Validaciones de negocio (espejo de validate_contrato)
+                                contratos_emp = contratos.objects.filter(
+                                    antecedente_id__empleado_id=emp_instance
+                                )
+                                cantidad_contratos = contratos_emp.count()
+
+                                if contratos_emp.filter(es_fijo=True).exists():
+                                    errores.append(
+                                        f"Línea {linea}: El empleado {cedula} tiene contrato FIJO. "
+                                        "No se puede registrar otro contrato."
+                                    )
+                                elif cantidad_contratos >= 3:
+                                    errores.append(
+                                        f"Línea {linea}: El empleado {cedula} ya tiene 3 contratos registrados."
+                                    )
+                                else:
+                                    # Solo verificar contrato activo para el 1ro y 2do contrato
+                                    es_nuevo = not contratos.objects.filter(
+                                        n_contrato=n_contrato_excel
+                                    ).exists()
+                                    if es_nuevo and cantidad_contratos < 2:
+                                        hoy_bulk = date.today()
+                                        activo_exist = contratos_emp.filter(
+                                            fecha_culminacion__isnull=True
+                                        ).first() or contratos_emp.filter(
+                                            fecha_culminacion__gte=hoy_bulk
+                                        ).first()
+                                        if activo_exist:
+                                            errores.append(
+                                                f"Línea {linea}: El empleado {cedula} ya tiene "
+                                                f"un contrato activo ({activo_exist.n_contrato})."
+                                            )
+                                            continue
+
+                                    upsert_contrato(emp_instance, {
+                                        'n_contrato': n_contrato_excel,
+                                        'fecha_ingreso': fecha_ingreso_org,
+                                        'politica_id': politica_obj,
+                                        'fecha_culminacion': fecha_culminacion_excel,
+                                    })
+
 
                         except Exception as e:
                             errores.append(f"Línea {linea}: {str(e)}")
