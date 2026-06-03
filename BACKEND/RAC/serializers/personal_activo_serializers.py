@@ -8,7 +8,7 @@ from datetime import date
 from ..models.personal_models import *
 from ..models.historial_personal_models import Tipo_movimiento
 #importacion de servicios
-from ..services.generacion_codigo import generador_codigos, generar_prefijo_nomina 
+from ..services.generacion_codigo import generador_codigos, generar_prefijo_nomina, generar_codigo_asig_trabajo
 from ..serializers.catalogs_serializers import *
 from ..utils.constants import * 
 from datetime import date as date_type
@@ -322,9 +322,11 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
         if self.instance:
             self.fields['codigo'].read_only = True
         else:
+            # En creación el frontend puede omitir el código (el backend lo genera)
+            self.fields['codigo'].required = False
+            self.fields['codigo'].allow_blank = True
             self.fields['OrganismoAdscritoid'].read_only = True
             self.fields['tipo_procedencia'].read_only = True
-             
     def validate_tiponominaid(self, value):
         if not self.instance or self.instance.tiponominaid != value:
             if value.requiere_codig:
@@ -373,7 +375,32 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
             
             if nueva_nomina is not None and nueva_nomina != self.instance.tiponominaid:
                 raise serializers.ValidationError("No se permite actualizar el tipo de nómina cuando es un cargo especial")
-     
+
+        # ----------------------------------------------------------------
+        # Autogeneración de código si el frontend no lo envía (solo creación)
+        # ----------------------------------------------------------------
+        if not self.instance:
+            codigo = attrs.get('codigo') or ''
+            if not codigo.strip():
+                try:
+                    attrs['codigo'] = generar_codigo_asig_trabajo(
+                        direccion_general=attrs.get('DireccionGeneral'),
+                        direccion_linea=attrs.get('DireccionLinea'),
+                        coordinacion=attrs.get('Coordinacion'),
+                        dependencia=attrs.get('Dependencia'),
+                        denominacion_cargo=attrs.get('denominacioncargoid'),
+                    )
+                except ValueError as e:
+                    raise serializers.ValidationError({'codigo': str(e)})
+
+                # Verificar unicidad global del código autogenerado
+                if AsigTrabajo.objects.filter(codigo=attrs['codigo']).exists():
+                    raise serializers.ValidationError({
+                        'codigo': (
+                            f"El código autogenerado {attrs['codigo']} ya existe en el sistema. "
+                            "Contacte al administrador."
+                        )
+                    })
 
         return attrs
 

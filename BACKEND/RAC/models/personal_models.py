@@ -98,7 +98,7 @@ class Dependencias(models.Model):
 class DireccionGeneral(models.Model):
     Codigo = models.CharField(max_length=20, unique=True)
     direccion_general = models.CharField(max_length=200, unique=True)
-    dependenciaId = models.ForeignKey('Dependencias', models.PROTECT,null=True, default=1, db_column='dependenciaId')
+    dependenciaId = models.ForeignKey('Dependencias', models.PROTECT,null=True,  db_column='dependenciaId')
 
     class Meta:
         managed = True
@@ -318,6 +318,7 @@ class GruposCapacitacion(models.Model):
 
     class Meta:
         managed = True
+        ordering = ['nombre_grupo']
         db_table = 'grupos_capacitacion'
         app_label = 'RAC'
         
