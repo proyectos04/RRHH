@@ -327,6 +327,7 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
             self.fields['codigo'].allow_blank = True
             self.fields['OrganismoAdscritoid'].read_only = True
             self.fields['tipo_procedencia'].read_only = True
+
     def validate_tiponominaid(self, value):
         if not self.instance or self.instance.tiponominaid != value:
             if value.requiere_codig:
