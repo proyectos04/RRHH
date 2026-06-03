@@ -8,6 +8,10 @@ from .serializers_encuestas import (
     CensoExcelFiltrosSerializer,
     CensoExcelRowSerializer,
 )
+from .serializers_reporte_censo import (
+    ReporteCensoDependenciasSerializer,
+    ReporteCensoResponseSerializer,
+)
 
 __all__ = [
     "TipoPreguntaSerializer",
@@ -16,6 +20,8 @@ __all__ = [
     "RespuestaEncuestaSerializer",
     "CensoEmpleadoSerializer",
     "CensoViviendaSubmitSerializer",
+    "ReporteCensoDependenciasSerializer",
+    "ReporteCensoResponseSerializer",
     "CensoExcelFiltrosSerializer",
     "CensoExcelRowSerializer",
 ]
