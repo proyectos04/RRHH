@@ -325,6 +325,7 @@ class CodigosCreateUpdateSerializer(CleanZerosMixin, serializers.ModelSerializer
             # En creación el frontend puede omitir el código (el backend lo genera)
             self.fields['codigo'].required = False
             self.fields['codigo'].allow_blank = True
+            self.fields['codigo'].allow_null = True
             self.fields['OrganismoAdscritoid'].read_only = True
             self.fields['tipo_procedencia'].read_only = True
 
